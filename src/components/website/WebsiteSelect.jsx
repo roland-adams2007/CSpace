@@ -149,7 +149,7 @@ const WebsiteSelect = () => {
 
         <button
           onClick={handleSignOut}
-          className="fixed top-8 right-8 flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-all duration-300 group z-10"
+          className="fixed top-8 right-8 flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-all duration-300 group z-[999999]"
         >
           <span className="font-medium tracking-wide">Sign out</span>
           <LogOut className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />

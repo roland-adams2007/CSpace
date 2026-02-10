@@ -8,6 +8,8 @@ import Dashboard from "../pages/Dashboard";
 
 // 🔹 Lazy imports (code-splitting only)
 const Login = lazy(() => import("../components/auth/Login"));
+const Register = lazy(() => import("../components/auth/Register"));
+const VerifyEmail = lazy(() => import("../components/auth/VerifyEmail"));
 
 export default function AppRoutes() {
   return (
@@ -17,6 +19,8 @@ export default function AppRoutes() {
 
         <Route element={<PublicRoute />}>
           <Route path="/login" element={<Login />} />
+          <Route path="/reg" element={<Register />} />
+          <Route path="/auth/verify-email" element={<VerifyEmail />} />
         </Route>
 
         <Route element={<ProtectedRoute />}>
