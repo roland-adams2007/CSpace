@@ -4,8 +4,16 @@ import { AuthProvider } from "./context/Auth/AuthContext";
 import AppRoutes from "./routes/AppRoutes";
 import ScrollToTop from "./utils/ScrollToTop";
 import TopLoader from "./components/ui/loaders/TopLoader";
+import { useEffect } from "react";
+import { useWebsiteStore } from "./store/store";
 
 function App() {
+  const initializeStore = useWebsiteStore((state) => state.initialize);
+
+  useEffect(() => {
+    initializeStore();
+  }, [initializeStore]);
+
   return (
     <>
       <ScrollToTop />

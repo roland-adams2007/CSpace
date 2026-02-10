@@ -1,3 +1,149 @@
+AppRoutes.jsx:
+import { lazy, Suspense } from "react";
+import { Route, Routes, Navigate } from "react-router-dom";
+import NotFound from "../components/errors/NotFound";
+import AppLoader from "../components/ui/loaders/AppLoader";
+import PublicRoute from "./PublicRoute";
+import ProtectedRoute from "./ProtectedRoute";
+import Dashboard from "../pages/Dashboard";
+
+// 🔹 Lazy imports (code-splitting only)
+const Login = lazy(() => import("../components/auth/Login"));
+
+export default function AppRoutes() {
+  return (
+    <Suspense fallback={<AppLoader />}>
+      <Routes>
+        <Route path="/" element={<>Home</>} />
+
+        <Route element={<PublicRoute />}>
+          <Route path="/login" element={<Login />} />
+        </Route>
+
+        <Route element={<ProtectedRoute />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+        </Route>
+
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </Suspense>
+  );
+}
+
+
+
+ProtectedRoute.jsx:
+import { Navigate, Outlet } from "react-router-dom";
+
+export default function ProtectedRoute() {
+  try {
+    const token = localStorage.getItem("accessToken");
+
+    if (!token || token.trim() === "") {
+      return <Navigate to="/login" replace />;
+    }
+
+    return <Outlet />;
+  } catch (error) {
+    return <Navigate to="/login" replace />;
+  }
+}
+
+
+PublicRoute.jsx:
+import { Navigate, Outlet } from "react-router-dom";
+
+export default function PublicRoute() {
+  const token = localStorage.getItem("accessToken");
+  if (token) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <Outlet />;
+}
+
+
+App.jsx:
+import "./App.css";
+import { Route, Routes } from "react-router-dom";
+import { AuthProvider } from "./context/Auth/AuthContext";
+import AppRoutes from "./routes/AppRoutes";
+import ScrollToTop from "./utils/ScrollToTop";
+import TopLoader from "./components/ui/loaders/TopLoader";
+
+function App() {
+  return (
+    <>
+      <ScrollToTop />
+      <TopLoader />
+      <AuthProvider>
+        <Routes>
+          <Route path="/*" element={<AppRoutes />} />
+        </Routes>
+      </AuthProvider>
+    </>
+  );
+}
+
+export default App;
+
+
+
+store/store.js(is exporting this)
+import { create } from "zustand";
+import axiosInstance from "../../api/axiosinstance";
+
+export const useWebsiteStore = create((set, get) => ({
+
+}));
+
+
+router.get("/company-check", validateTokenHandler, userCompanyCheck);
+
+
+
+const userCompanyCheck = asyncHandler(async function (req, res) {
+  const userId = req.user?.id;
+
+  if (!userId) {
+    res.status(401);
+    throw new Error("Unauthorized");
+  }
+
+  const websites = await Website.findForUser(userId);
+  res.status(200);
+  responseHandler(res, { websites: websites || [] }, "User websites");
+});
+
+// models/website.model.js
+const { db_connection } = require("../config/config.inc");
+
+const Website = {
+  findForUser: async (userId) => {
+    try {
+      const [rows] = await db_connection.execute(
+        `SELECT w.id, w.name, w.slug, w.is_published
+         FROM website_users wu
+         JOIN websites w ON w.id = wu.website_id
+         WHERE wu.user_id = ? AND wu.is_active = 1
+         ORDER BY w.created_at DESC`,
+        [userId],
+      );
+      return rows || [];
+    } catch {
+      return [];
+    }
+  },
+};
+
+module.exports = Website;
+
+
+prompt:
+help me do this it should fetch the user company check use a component when it fetch it wil check if it has any website if not it will bring a form name of website but if there is website it will bring a option with the webiste inside they will have to choose the website they wwant to enter, droppdown + button, make it like a page but not actually a page just like a full stress modal
+don;t do left and right section just one at the middle, give me full code with no comments
+
+use this for the design:
 import { useState } from "react";
 import { Mail, Lock, Eye, EyeOff, Layers } from "lucide-react";
 import axiosInstance from "./../../api/axiosInstance";
@@ -327,3 +473,5 @@ const Login = () => {
 };
 
 export default Login;
+
+
