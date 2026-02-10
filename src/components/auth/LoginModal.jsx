@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Mail, Lock, Eye, EyeOff, X, Layers } from "lucide-react";
 import axiosInstance from "./../../api/axiosInstance";
 import { useAuth } from "./../../context/Auth/UseAuth";
+import { useNavigate } from "react-router-dom";
 
 const LoginModal = ({ isOpen, onClose, onSuccess, onSwitchToRegister }) => {
   const { login } = useAuth();
@@ -11,8 +12,8 @@ const LoginModal = ({ isOpen, onClose, onSuccess, onSwitchToRegister }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const navigate = useNavigate();
 
-  // Reset form when modal opens/closes
   useEffect(() => {
     if (isOpen) {
       setEmail("");
@@ -22,7 +23,6 @@ const LoginModal = ({ isOpen, onClose, onSuccess, onSwitchToRegister }) => {
     }
   }, [isOpen]);
 
-  // Handle escape key to close modal
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === "Escape" && isOpen) {
@@ -33,7 +33,6 @@ const LoginModal = ({ isOpen, onClose, onSuccess, onSwitchToRegister }) => {
     return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen, onClose]);
 
-  // Prevent body scroll when modal is open
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
@@ -84,45 +83,37 @@ const LoginModal = ({ isOpen, onClose, onSuccess, onSwitchToRegister }) => {
     }
   };
 
-  // Handle overlay click
   const handleOverlayClick = (e) => {
     if (e.target === e.currentTarget) {
       onClose();
     }
   };
 
-  // Handle switch to register
   const handleRegisterClick = () => {
-    onClose(); // Close login modal
+    onClose();
     if (onSwitchToRegister) {
-      onSwitchToRegister(); // Open register modal
+      onSwitchToRegister();
     }
   };
 
-  // Handle forgot password
   const handleForgotPassword = () => {
-    // You can implement a forgot password modal or navigation here
     console.log("Forgot password clicked");
-    // Example: navigate("/forgot-password");
-    // or: openForgotPasswordModal();
+    navigate("/forgot-password");
   };
 
   if (!isOpen) return null;
 
   return (
     <>
-      {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 transition-opacity duration-300"
         onClick={handleOverlayClick}
         aria-hidden="true"
       />
 
-      {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[1000] flex items-center justify-center md:p-4">
         <div className="relative w-full max-w-md mx-auto">
           <div className="login-modal bg-white rounded-2xl shadow-2xl overflow-hidden transform transition-all duration-300 scale-100 opacity-100">
-            {/* Modal Header */}
             <div className="relative p-6 border-b border-gray-100">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-3">
@@ -155,7 +146,6 @@ const LoginModal = ({ isOpen, onClose, onSuccess, onSwitchToRegister }) => {
               </div>
             </div>
 
-            {/* Modal Body */}
             <div className="p-6">
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
@@ -291,12 +281,10 @@ const LoginModal = ({ isOpen, onClose, onSuccess, onSwitchToRegister }) => {
               </div>
             </div>
 
-            {/* Modal Footer */}
             <div className="px-6 py-4 bg-gray-50">
               <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-gray-500">
                 <button
                   onClick={() => {
-                    // Handle terms click
                     console.log("Terms clicked");
                     onClose();
                   }}
@@ -306,7 +294,6 @@ const LoginModal = ({ isOpen, onClose, onSuccess, onSwitchToRegister }) => {
                 </button>
                 <button
                   onClick={() => {
-                    // Handle privacy click
                     console.log("Privacy clicked");
                     onClose();
                   }}
@@ -316,7 +303,6 @@ const LoginModal = ({ isOpen, onClose, onSuccess, onSwitchToRegister }) => {
                 </button>
                 <button
                   onClick={() => {
-                    // Handle support click
                     console.log("Support clicked");
                     onClose();
                   }}

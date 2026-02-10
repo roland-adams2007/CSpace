@@ -1,32 +1,69 @@
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet, useNavigate } from "react-router-dom";
 import WebsiteSelect from "../components/website/WebsiteSelect";
 import { useState, useEffect } from "react";
 import AppLoader from "../components/ui/loaders/AppLoader";
+import LoginModal from "../components/auth/LoginModal";
+import { useAuth } from "../context/Auth/UseAuth";
 
 export default function ProtectedRoute() {
   const [showWebsiteSelect, setShowWebsiteSelect] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const navigate = useNavigate();
+  const { user, loadingUser } = useAuth();
 
   useEffect(() => {
-    const token = localStorage.getItem("accessToken");
-    const selectedWebsite = localStorage.getItem("selectedWebsite");
+    if (loadingUser) return;
 
-    if (!token || token.trim() === "") {
+    if (!user) {
+      setShowLoginModal(true);
+      setIsCheckingAuth(false);
       return;
     }
+
+    const selectedWebsite = localStorage.getItem("selectedWebsite");
 
     if (!selectedWebsite) {
       setShowWebsiteSelect(true);
     }
-  }, []);
 
-  const token = localStorage.getItem("accessToken");
+    setIsCheckingAuth(false);
+  }, [user, loadingUser]);
 
-  if (!token || token.trim() === "") {
-    return <Navigate to="/login" replace />;
+  const handleLoginSuccess = () => {
+    setShowLoginModal(false);
+    const selectedWebsite = localStorage.getItem("selectedWebsite");
+    if (!selectedWebsite) {
+      setShowWebsiteSelect(true);
+    }
+  };
+
+  const handleCloseLoginModal = () => {
+    setShowLoginModal(false);
+  };
+
+  const handleSwitchToRegister = () => {
+    handleCloseLoginModal();
+    navigate("/reg");
+  };
+
+  if (isCheckingAuth || loadingUser) {
+    return <AppLoader />;
   }
 
   if (showWebsiteSelect) {
     return <WebsiteSelect />;
+  }
+
+  if (!user) {
+    return (
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={handleCloseLoginModal}
+        onSuccess={handleLoginSuccess}
+        onSwitchToRegister={handleSwitchToRegister}
+      />
+    );
   }
 
   return <Outlet />;
