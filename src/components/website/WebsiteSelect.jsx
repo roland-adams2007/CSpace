@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-
 import { ChevronDown, Globe, Plus, Check, LogOut } from "lucide-react";
 import axiosInstance from "./../../api/axiosInstance";
 import { useNavigate } from "react-router-dom";
@@ -8,9 +7,6 @@ import { useWebsiteStore } from "./../../store/store";
 import AppLoader from "../ui/loaders/AppLoader";
 
 const WebsiteSelect = () => {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [websites, setWebsites] = useState([]);
   const [selectedWebsite, setSelectedWebsite] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -24,6 +20,11 @@ const WebsiteSelect = () => {
   const {
     setSelectedWebsite: setStoreWebsite,
     selectedWebsite: storedWebsite,
+    websites,
+    loading,
+    error,
+    fetchWebsites,
+    addWebsite,
   } = useWebsiteStore();
 
   useEffect(() => {
@@ -32,7 +33,6 @@ const WebsiteSelect = () => {
 
   const checkWebsiteSelection = async () => {
     try {
-      setLoading(true);
       const token = localStorage.getItem("accessToken");
 
       if (!token) {
@@ -44,31 +44,25 @@ const WebsiteSelect = () => {
       if (stored) {
         setStoreWebsite(JSON.parse(stored));
         setVisible(false);
-        setLoading(false);
         return;
       }
 
-      const response = await axiosInstance.get("/users/company-check");
-      const websites = response.data.data.websites || [];
-      setWebsites(websites);
+      const fetchedWebsites = await fetchWebsites();
 
-      if (websites.length === 0) {
+      if (fetchedWebsites.length === 0) {
         setShowForm(true);
       } else {
-        setSelectedWebsite(websites[0]);
+        setSelectedWebsite(fetchedWebsites[0]);
       }
 
       setVisible(true);
-      setLoading(false);
     } catch (err) {
       if (err.response?.status === 401) {
         localStorage.removeItem("accessToken");
         navigate("/login");
       } else {
-        setError("Failed to load websites");
         setVisible(true);
       }
-      setLoading(false);
     }
   };
 
@@ -102,10 +96,13 @@ const WebsiteSelect = () => {
       });
 
       const newWebsite = response.data.data.website;
-      setWebsites([newWebsite, ...websites]);
+      addWebsite(newWebsite);
       setSelectedWebsite(newWebsite);
       setShowForm(false);
       setWebsiteName("");
+      setStoreWebsite(newWebsite);
+      localStorage.setItem("selectedWebsite", JSON.stringify(newWebsite));
+      setVisible(false);
     } catch (err) {
       setCreateError(err.response?.data?.message || "Failed to create website");
     } finally {
@@ -133,7 +130,7 @@ const WebsiteSelect = () => {
   }, [showDropdown]);
 
   if (loading) {
-    <AppLoader />;
+    return <AppLoader />;
   }
 
   if (!visible) {
