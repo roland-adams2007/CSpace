@@ -50,10 +50,10 @@ export default function ProtectedRoute() {
   if (isCheckingAuth || loadingUser) {
     return <AppLoader />;
   }
+if (showWebsiteSelect) {
+  return <WebsiteSelect onDone={() => setShowWebsiteSelect(false)} />;
+}
 
-  if (showWebsiteSelect) {
-    return <WebsiteSelect />;
-  }
 
   if (!user) {
     return (

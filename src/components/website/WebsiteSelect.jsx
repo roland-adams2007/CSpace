@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useWebsiteStore } from "./../../store/store";
 import AppLoader from "../ui/loaders/AppLoader";
 
-const WebsiteSelect = () => {
+const WebsiteSelect = ({ onDone }) => {
   const [selectedWebsite, setSelectedWebsite] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -15,6 +15,7 @@ const WebsiteSelect = () => {
   const [createError, setCreateError] = useState("");
   const [visible, setVisible] = useState(false);
   const triggerRef = useRef(null);
+  const dropdownRef = useRef(null);
 
   const navigate = useNavigate();
   const {
@@ -76,6 +77,7 @@ const WebsiteSelect = () => {
       setStoreWebsite(selectedWebsite);
       localStorage.setItem("selectedWebsite", JSON.stringify(selectedWebsite));
       setVisible(false);
+      onDone?.();
     }
   };
 
@@ -103,6 +105,7 @@ const WebsiteSelect = () => {
       setStoreWebsite(newWebsite);
       localStorage.setItem("selectedWebsite", JSON.stringify(newWebsite));
       setVisible(false);
+      onDone?.();
     } catch (err) {
       setCreateError(err.response?.data?.message || "Failed to create website");
     } finally {
@@ -122,11 +125,12 @@ const WebsiteSelect = () => {
 
     const onDown = (e) => {
       if (triggerRef.current?.contains(e.target)) return;
+      if (dropdownRef.current?.contains(e.target)) return;
       setShowDropdown(false);
     };
 
-    window.addEventListener("mousedown", onDown, true);
-    return () => window.removeEventListener("mousedown", onDown, true);
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
   }, [showDropdown]);
 
   if (loading) {
@@ -221,6 +225,7 @@ const WebsiteSelect = () => {
 
                         return (
                           <div
+                            ref={dropdownRef}
                             style={{
                               position: "fixed",
                               top,
