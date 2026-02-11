@@ -2972,3 +2972,10 @@ export default function SortableSection({ section, onSelect, themeColors }) {
 prompt:
 help me do this:
 1.why is the nav menu starting from the middle?? instead if the right end? and help me is responsive tho like incase it is mobile
+2. and also is it must i navigate using /{something}, can i do this # and assign the block it will navigate to and also when building the website pls disable all nav routing in the website
+like if my menu is supposed to go to/ don't allow it to go in this website preview because it will navigate and mess with the routing u get.
+3. and also why is there one option to build the website here, at least three styles to create the website so it should not be only one defalut style each
+4. make it simlar to elementor, wix and wordpress
+
+
+and give me full code with no comments

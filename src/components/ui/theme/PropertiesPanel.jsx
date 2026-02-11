@@ -246,7 +246,7 @@ export default function PropertiesPanel() {
                   const menu = config.header.props.menu || [];
                   updateConfig("header.props.menu", [
                     ...menu,
-                    { id: Date.now().toString(), label: "New Link", url: "#" },
+                    { id: Date.now().toString(), label: "New Link", url: "#section-" + Date.now() },
                   ]);
                 }}
                 className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
@@ -286,7 +286,7 @@ export default function PropertiesPanel() {
                   />
                   <input
                     type="text"
-                    placeholder="URL"
+                    placeholder="URL (use #section-id for internal links)"
                     value={item.url}
                     onChange={(e) => {
                       const menu = [...config.header.props.menu];
@@ -318,7 +318,7 @@ export default function PropertiesPanel() {
             />
             <input
               type="text"
-              placeholder="Button Link"
+              placeholder="Button Link (use #section-id for internal links)"
               value={config.header.props.ctaButton?.link || ""}
               onChange={(e) =>
                 updateConfig("header.props.ctaButton", {
@@ -511,7 +511,7 @@ export default function PropertiesPanel() {
                         />
                         <input
                           type="text"
-                          placeholder="URL"
+                          placeholder="URL (use # for internal links)"
                           value={link.url}
                           onChange={(e) => {
                             const columns = [...config.footer.props.columns];
@@ -779,6 +779,29 @@ export default function PropertiesPanel() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
+        <div className="mb-6">
+          <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+            Section ID
+          </h4>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={section.id}
+              readOnly
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm"
+            />
+            <button
+              onClick={() => navigator.clipboard.writeText(section.id)}
+              className="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm"
+            >
+              Copy ID
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mt-1">
+            Use this ID for navigation links (e.g., #{section.id})
+          </p>
+        </div>
+
         <div className="mb-6 pb-6 border-b border-gray-200">
           <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
             Section Style

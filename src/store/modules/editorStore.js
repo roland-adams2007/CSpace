@@ -2,6 +2,8 @@ import { create } from "zustand";
 
 export const useEditorStore = create((set, get) => ({
   config: {
+    template: "classic",
+    previewMode: false,
     header: {
       type: "default",
       props: {

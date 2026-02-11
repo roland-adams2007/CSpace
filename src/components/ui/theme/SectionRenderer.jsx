@@ -1,7 +1,7 @@
 import { SECTION_TYPES } from "../../../utils/sectionLibrary";
 import * as LucideIcons from "lucide-react";
 
-export default function SectionRenderer({ section, themeColors }) {
+export default function SectionRenderer({ section, themeColors, selectedTemplate }) {
   const getIcon = (iconName) => {
     if (!iconName) return null;
     const IconComponent =
@@ -34,6 +34,12 @@ export default function SectionRenderer({ section, themeColors }) {
       style.backgroundRepeat = "no-repeat";
     }
 
+    if (selectedTemplate === "minimal") {
+      style.maxWidth = "800px";
+      style.marginLeft = "auto";
+      style.marginRight = "auto";
+    }
+
     return style;
   };
 
@@ -64,6 +70,80 @@ export default function SectionRenderer({ section, themeColors }) {
 
     const overlayStyle = getOverlayStyle();
     const hasImage = image && image.trim() !== "";
+
+    if (selectedTemplate === "modern" && hasImage) {
+      return (
+        <div style={getSectionStyle()}>
+          {overlayStyle && <div style={overlayStyle}></div>}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+              <div className="space-y-8">
+                <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 leading-tight">
+                  {heading || "Hero Heading"}
+                </h1>
+                <p className="text-xl md:text-2xl text-gray-600 max-w-2xl">
+                  {subheading || "Hero subheading goes here"}
+                </p>
+                {ctaText && (
+                  <div className="flex flex-wrap gap-4">
+                    <a
+                      href={ctaLink || "#"}
+                      className="px-10 py-4 rounded-xl font-bold text-lg transition-all shadow-xl hover:shadow-2xl transform hover:-translate-y-1"
+                      style={{ backgroundColor: themeColors?.primary || "#6366f1", color: "#ffffff" }}
+                    >
+                      {ctaText}
+                    </a>
+                    <a
+                      href="#features"
+                      className="px-10 py-4 border-2 border-gray-900 text-gray-900 rounded-xl font-bold text-lg hover:bg-gray-900 hover:text-white transition-all"
+                    >
+                      Learn More
+                    </a>
+                  </div>
+                )}
+              </div>
+              <div className="relative">
+                <img src={image} alt={heading} className="w-full h-auto rounded-3xl shadow-2xl" />
+                <div className="absolute -bottom-6 -left-6 w-24 h-24 bg-yellow-400 rounded-2xl -z-10"></div>
+                <div className="absolute -top-6 -right-6 w-20 h-20 bg-pink-400 rounded-2xl -z-10"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (selectedTemplate === "minimal") {
+      return (
+        <div style={getSectionStyle()}>
+          {overlayStyle && <div style={overlayStyle}></div>}
+          <div className="px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-light text-gray-900 mb-8 tracking-tight">
+              {heading || "Hero Heading"}
+            </h1>
+            <p className="text-lg md:text-xl text-gray-600 mb-12 max-w-2xl mx-auto leading-relaxed">
+              {subheading || "Hero subheading goes here"}
+            </p>
+            {ctaText && (
+              <div className="flex justify-center gap-4">
+                <a
+                  href={ctaLink || "#"}
+                  className="px-8 py-3 border-2 border-gray-900 text-gray-900 rounded-lg font-medium hover:bg-gray-900 hover:text-white transition-all"
+                >
+                  {ctaText}
+                </a>
+                <a
+                  href="#"
+                  className="px-8 py-3 text-gray-600 hover:text-gray-900 font-medium"
+                >
+                  View Examples →
+                </a>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
 
     if (hasImage) {
       return (
@@ -125,6 +205,74 @@ export default function SectionRenderer({ section, themeColors }) {
     const { heading, subheading, features = [], columns = 3 } = section.props;
     const overlayStyle = getOverlayStyle();
 
+    if (selectedTemplate === "modern") {
+      return (
+        <div style={getSectionStyle()}>
+          {overlayStyle && <div style={overlayStyle}></div>}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+              <div>
+                <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+                  {heading || "Features"}
+                </h2>
+                {subheading && <p className="text-xl text-gray-600 mb-8">{subheading}</p>}
+              </div>
+              <div className="space-y-8">
+                {features.map((feature, index) => {
+                  const Icon = getIcon(feature.icon);
+                  return (
+                    <div key={feature.id || index} className="flex items-start gap-4">
+                      <div className="flex-shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg" style={{ backgroundColor: themeColors?.primary || "#6366f1" }}>
+                        {Icon && <Icon className="w-7 h-7 text-white" />}
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">{feature.title}</h3>
+                        <p className="text-gray-600">{feature.description}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (selectedTemplate === "minimal") {
+      return (
+        <div style={getSectionStyle()}>
+          {overlayStyle && <div style={overlayStyle}></div>}
+          <div className="px-4 sm:px-6 lg:px-8 relative z-10">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl md:text-4xl font-light text-gray-900 mb-4 tracking-tight">
+                {heading || "Features"}
+              </h2>
+              {subheading && <p className="text-lg text-gray-600 max-w-2xl mx-auto">{subheading}</p>}
+            </div>
+            <div className={`grid grid-cols-1 ${columns >= 2 ? 'md:grid-cols-2' : ''} ${columns >= 3 ? 'lg:grid-cols-3' : ''} ${columns >= 4 ? 'xl:grid-cols-4' : ''} gap-12`}>
+              {features.map((feature) => {
+                const Icon = getIcon(feature.icon);
+                return (
+                  <div key={feature.id} className="text-center">
+                    {Icon && (
+                      <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-gray-300">
+                        <Icon className="w-8 h-8 text-gray-600" />
+                      </div>
+                    )}
+                    <h3 className="text-lg font-medium text-gray-900 mb-3">
+                      {feature.title}
+                    </h3>
+                    <p className="text-gray-600 text-sm leading-relaxed">{feature.description}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div style={getSectionStyle()}>
         {overlayStyle && <div style={overlayStyle}></div>}
@@ -162,6 +310,38 @@ export default function SectionRenderer({ section, themeColors }) {
     const { heading, subheading, primaryButton, secondaryButton } = section.props;
     const overlayStyle = getOverlayStyle();
 
+    if (selectedTemplate === "minimal") {
+      return (
+        <div style={getSectionStyle()}>
+          {overlayStyle && <div style={overlayStyle}></div>}
+          <div className="px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+            <h2 className="text-3xl md:text-4xl font-light text-white mb-6 tracking-tight">
+              {heading || "Ready to get started?"}
+            </h2>
+            {subheading && <p className="text-lg mb-10 text-white opacity-90">{subheading}</p>}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              {primaryButton?.text && (
+                <a
+                  href={primaryButton.link || "#"}
+                  className="px-8 py-3 bg-white text-black rounded-lg font-medium hover:bg-gray-100 transition-all"
+                >
+                  {primaryButton.text}
+                </a>
+              )}
+              {secondaryButton?.text && (
+                <a
+                  href={secondaryButton.link || "#"}
+                  className="px-8 py-3 border-2 border-white text-white rounded-lg font-medium hover:bg-white hover:text-black transition-all"
+                >
+                  {secondaryButton.text}
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div style={getSectionStyle()}>
         {overlayStyle && <div style={overlayStyle}></div>}
@@ -198,6 +378,26 @@ export default function SectionRenderer({ section, themeColors }) {
     const { heading, content, image, imagePosition = "right" } = section.props;
     const overlayStyle = getOverlayStyle();
     const hasImage = image && image.trim() !== "";
+
+    if (selectedTemplate === "minimal") {
+      return (
+        <div style={getSectionStyle()}>
+          {overlayStyle && <div style={overlayStyle}></div>}
+          <div className="px-4 sm:px-6 lg:px-8 relative z-10">
+            <h2 className="text-3xl md:text-4xl font-light text-gray-900 mb-8 tracking-tight text-center">
+              {heading || "Content Heading"}
+            </h2>
+            <div
+              className="prose prose-lg max-w-none mx-auto text-center"
+              style={{ color: section.style?.backgroundType === "image" ? "#e5e7eb" : undefined }}
+              dangerouslySetInnerHTML={{
+                __html: content || "<p>Content goes here...</p>",
+              }}
+            />
+          </div>
+        </div>
+      );
+    }
 
     if (hasImage) {
       return (
@@ -284,6 +484,43 @@ export default function SectionRenderer({ section, themeColors }) {
     const { heading, testimonials = [] } = section.props;
     const overlayStyle = getOverlayStyle();
 
+    if (selectedTemplate === "modern") {
+      return (
+        <div style={getSectionStyle()}>
+          {overlayStyle && <div style={overlayStyle}></div>}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                {heading || "Testimonials"}
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {testimonials.map((test) => (
+                <div key={test.id} className="relative p-8 bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-shadow">
+                  <div className="absolute -top-4 -left-4 text-6xl text-gray-200">"</div>
+                  <p className="text-gray-700 mb-6 text-lg relative z-10">"{test.content}"</p>
+                  <div className="flex items-center">
+                    <div className="w-14 h-14 bg-gray-300 rounded-full mr-4 overflow-hidden border-4 border-white shadow-lg">
+                      {test.avatar && <img src={test.avatar} alt={test.name} className="w-full h-full object-cover" />}
+                    </div>
+                    <div>
+                      <p className="font-bold text-gray-900 text-lg">{test.name}</p>
+                      <p className="text-sm text-gray-600">{test.role}</p>
+                      <div className="flex mt-1">
+                        {[...Array(test.rating || 5)].map((_, i) => (
+                          <LucideIcons.Star key={i} className="w-4 h-4 fill-current text-yellow-400" />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div style={getSectionStyle()}>
         {overlayStyle && <div style={overlayStyle}></div>}
@@ -320,6 +557,64 @@ export default function SectionRenderer({ section, themeColors }) {
   const renderPricing = () => {
     const { heading, subheading, plans = [] } = section.props;
     const overlayStyle = getOverlayStyle();
+
+    if (selectedTemplate === "modern") {
+      return (
+        <div style={getSectionStyle()}>
+          {overlayStyle && <div style={overlayStyle}></div>}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div className="text-center mb-16">
+              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+                {heading || "Pricing"}
+              </h2>
+              {subheading && <p className="text-xl text-gray-600">{subheading}</p>}
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {plans.map((plan) => (
+                <div
+                  key={plan.id}
+                  className={`rounded-3xl p-8 transition-all hover:shadow-2xl ${
+                    plan.highlighted
+                      ? "ring-4 shadow-2xl transform scale-105 bg-gradient-to-b from-blue-50 to-white"
+                      : "border-2 border-gray-200 bg-white"
+                  }`}
+                  style={plan.highlighted ? { borderColor: themeColors?.primary || "#6366f1" } : {}}
+                >
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                    {plan.name}
+                  </h3>
+                  <div className="mb-8">
+                    <span className="text-5xl font-bold text-gray-900">
+                      {plan.price}
+                    </span>
+                    <span className="text-gray-600 text-lg">/{plan.period}</span>
+                  </div>
+                  <ul className="space-y-4 mb-10">
+                    {plan.features.map((feature, idx) => (
+                      <li key={idx} className="flex items-start text-gray-700">
+                        <LucideIcons.Check className="w-6 h-6 text-green-500 mr-3 flex-shrink-0 mt-0.5" />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <a
+                    href={plan.ctaLink || "#"}
+                    className={`block w-full py-4 rounded-xl font-bold text-lg text-center transition-all ${
+                      plan.highlighted
+                        ? "text-white shadow-xl hover:shadow-2xl transform hover:-translate-y-1"
+                        : "bg-gray-100 text-gray-900 hover:bg-gray-200"
+                    }`}
+                    style={plan.highlighted ? { backgroundColor: themeColors?.primary || "#6366f1" } : {}}
+                  >
+                    {plan.ctaText}
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div style={getSectionStyle()}>
