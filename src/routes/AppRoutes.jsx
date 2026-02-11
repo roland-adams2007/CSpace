@@ -10,6 +10,8 @@ import Dashboard from "../pages/Dashboard";
 const Login = lazy(() => import("../components/auth/Login"));
 const Register = lazy(() => import("../components/auth/Register"));
 const VerifyEmail = lazy(() => import("../components/auth/VerifyEmail"));
+const WebsiteBuilder = lazy(() => import("../pages/WebsiteBuilder"));
+const ThemeEditor = lazy(() => import("../pages/ThemeEditor"));
 
 export default function AppRoutes() {
   return (
@@ -26,7 +28,7 @@ export default function AppRoutes() {
         <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/website-builder" element={<>Website Builder</>} />
+            <Route path="/website-builder" element={<WebsiteBuilder />} />
             <Route path="/files" element={<>File Manager</>} />
             <Route path="/messages" element={<>Messages</>} />
             <Route path="/automations" element={<>Automations</>} />
@@ -35,6 +37,8 @@ export default function AppRoutes() {
             <Route path="/billing" element={<>Billing</>} />
             <Route path="/settings" element={<>Settings</>} />
           </Route>
+          
+          <Route path="/website-builder/:websiteSlug/theme/:themeSlug/edit" element={<ThemeEditor />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />
