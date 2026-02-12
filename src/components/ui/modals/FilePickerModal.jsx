@@ -132,7 +132,7 @@ export default function FilePickerModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
       <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col">
         <div className="p-6 border-b border-gray-200 flex items-center justify-between">
           <div>
@@ -192,7 +192,9 @@ export default function FilePickerModal({
           ) : filteredFiles.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {filteredFiles.map((file) => {
-                const isImage = file.mime_type?.startsWith("image/") || file.mime_type === "image";
+                const isImage =
+                  file.mime_type?.startsWith("image/") ||
+                  file.mime_type === "image";
                 const isSelected = selectedFile?.id === file.id;
 
                 return (
@@ -213,7 +215,8 @@ export default function FilePickerModal({
                           className="w-full h-full object-cover"
                           onError={(e) => {
                             e.target.onerror = null;
-                            e.target.src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIGZpbGw9IiNGRjVFNTAiLz48cGF0aCBkPSJNMzAgMzVMMjUgMjVMMjAgMzVIMzVaTTM1IDQwSDI1TDMwIDMwTDM1IDQwWiIgZmlsbD0id2hpdGUiLz48L3N2Zz4=";
+                            e.target.src =
+                              "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIGZpbGw9IiNGRjVFNTAiLz48cGF0aCBkPSJNMzAgMzVMMjUgMjVMMjAgMzVIMzVaTTM1IDQwSDI1TDMwIDMwTDM1IDQwWiIgZmlsbD0id2hpdGUiLz48L3N2Zz4=";
                           }}
                         />
                       ) : (
