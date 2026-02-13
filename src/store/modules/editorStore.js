@@ -145,6 +145,20 @@ export const useEditorStore = create((set, get) => ({
     set({ selectedSection: sectionId, selectedBlock: blockId, selectedHeader: false, selectedFooter: false });
   },
 
+  setTemplate: (template) => {
+    set((state) => ({
+      config: {
+        ...state.config,
+        template,
+      },
+      isDirty: true, // Fix: Set isDirty to true when template changes
+    }));
+    get().addToHistory({
+      ...get().config,
+      template,
+    });
+  },
+
   addToHistory: (config) => {
     const { history, historyIndex } = get();
     const newHistory = history.slice(0, historyIndex + 1);

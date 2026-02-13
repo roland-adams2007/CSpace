@@ -8,9 +8,12 @@ import {
   ChevronUp,
   Image as ImageIcon,
   Settings,
+  Film,
+  Move,
 } from "lucide-react";
 import { useWebsiteStore } from "../../../store/store";
 import FilePickerModal from "../modals/FilePickerModal";
+import { v4 as uuidv4 } from 'uuid';
 
 export default function PropertiesPanel() {
   const { selectedWebsite } = useWebsiteStore();
@@ -51,7 +54,7 @@ export default function PropertiesPanel() {
         updateConfig("header.props.logo", fileUrl);
       }
     } else if (currentImageField.type === "footer") {
-      
+      // Footer image fields
     } else if (currentImageField.sectionId) {
       if (currentImageField.arrayPath) {
         updateArrayItem(
@@ -623,7 +626,7 @@ export default function PropertiesPanel() {
     const array = section.props[arrayPath] || [];
     updateProp(arrayPath, [
       ...array,
-      { ...template, id: Date.now().toString() },
+      { ...template, id: uuidv4() },
     ]);
   };
 
@@ -631,6 +634,202 @@ export default function PropertiesPanel() {
     const array = [...section.props[arrayPath]];
     array.splice(index, 1);
     updateProp(arrayPath, array);
+  };
+
+  const renderCarouselSettings = () => {
+    const carousel = section.props.carousel;
+    if (!carousel) return null;
+
+    return (
+      <div className="mb-6 pb-6 border-b border-gray-200">
+        <div className="flex items-center gap-2 mb-4">
+          <Film className="w-4 h-4 text-indigo-600" />
+          <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            Carousel Settings
+          </h4>
+        </div>
+
+        <div className="space-y-4">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={carousel.enabled || false}
+              onChange={(e) => updateProp("carousel.enabled", e.target.checked)}
+              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            <span className="text-sm text-gray-700">Enable Carousel</span>
+          </label>
+
+          {carousel.enabled && (
+            <>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={carousel.autoplay || false}
+                  onChange={(e) => updateProp("carousel.autoplay", e.target.checked)}
+                  className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span className="text-sm text-gray-700">Autoplay</span>
+              </label>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Interval (ms)
+                </label>
+                <input
+                  type="number"
+                  value={carousel.interval || 5000}
+                  onChange={(e) => updateProp("carousel.interval", parseInt(e.target.value))}
+                  step="1000"
+                  min="2000"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+
+              {section.type === "gallery" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Visible Columns
+                  </label>
+                  <input
+                    type="number"
+                    value={section.props.columns || 3}
+                    onChange={(e) => updateProp("columns", parseInt(e.target.value))}
+                    min="1"
+                    max="6"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  />
+                </div>
+              )}
+
+              {section.type === "hero" && carousel.slides && (
+                <div className="mt-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Slides ({carousel.slides.length})
+                    </label>
+                    <button
+                      onClick={() => {
+                        const slides = [...(carousel.slides || [])];
+                        slides.push({
+                          id: uuidv4(),
+                          image: "",
+                          heading: `Slide ${slides.length + 1} Heading`,
+                          subheading: `Slide ${slides.length + 1} subheading`,
+                          ctaText: "Learn More",
+                          ctaLink: "#"
+                        });
+                        updateProp("carousel.slides", slides);
+                      }}
+                      className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="space-y-4">
+                    {carousel.slides.map((slide, idx) => (
+                      <div key={slide.id || idx} className="bg-gray-50 p-4 rounded-lg relative">
+                        <button
+                          onClick={() => {
+                            const slides = [...carousel.slides];
+                            slides.splice(idx, 1);
+                            updateProp("carousel.slides", slides);
+                          }}
+                          className="absolute top-2 right-2 p-1.5 text-red-600 hover:bg-red-50 rounded-lg"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">
+                              Slide Image
+                            </label>
+                            {slide.image && (
+                              <div className="relative border rounded-lg p-1 mb-2">
+                                <img src={slide.image} alt="Slide" className="w-full h-20 object-cover rounded" />
+                                <button
+                                  onClick={() => {
+                                    const slides = [...carousel.slides];
+                                    slides[idx].image = "";
+                                    updateProp("carousel.slides", slides);
+                                  }}
+                                  className="absolute top-2 right-2 p-1 bg-red-600 text-white rounded"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
+                            )}
+                            <button
+                              onClick={() =>
+                                openFilePicker({
+                                  sectionId: section.id,
+                                  arrayPath: "carousel.slides",
+                                  index: idx,
+                                  field: "image",
+                                })
+                              }
+                              className="w-full px-3 py-2 border border-dashed border-gray-300 rounded-lg text-xs text-gray-600 hover:border-indigo-500 hover:text-indigo-600"
+                            >
+                              {slide.image ? "Change Image" : "Add Image"}
+                            </button>
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="Heading"
+                            value={slide.heading || ""}
+                            onChange={(e) => {
+                              const slides = [...carousel.slides];
+                              slides[idx].heading = e.target.value;
+                              updateProp("carousel.slides", slides);
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Subheading"
+                            value={slide.subheading || ""}
+                            onChange={(e) => {
+                              const slides = [...carousel.slides];
+                              slides[idx].subheading = e.target.value;
+                              updateProp("carousel.slides", slides);
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                          />
+                          <div className="grid grid-cols-2 gap-2">
+                            <input
+                              type="text"
+                              placeholder="CTA Text"
+                              value={slide.ctaText || ""}
+                              onChange={(e) => {
+                                const slides = [...carousel.slides];
+                                slides[idx].ctaText = e.target.value;
+                                updateProp("carousel.slides", slides);
+                              }}
+                              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                            />
+                            <input
+                              type="text"
+                              placeholder="CTA Link"
+                              value={slide.ctaLink || "#"}
+                              onChange={(e) => {
+                                const slides = [...carousel.slides];
+                                slides[idx].ctaLink = e.target.value;
+                                updateProp("carousel.slides", slides);
+                              }}
+                              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    );
   };
 
   const renderInput = (label, value, onChange, type = "text") => {
@@ -775,6 +974,7 @@ export default function PropertiesPanel() {
         </div>
         <p className="text-xs text-gray-500 capitalize">
           {section.type} Section
+          {section.props.carousel?.enabled && " • Carousel"}
         </p>
       </div>
 
@@ -943,14 +1143,17 @@ export default function PropertiesPanel() {
           </div>
         </div>
 
+        {renderCarouselSettings()}
+
         <div className="mb-6 pb-6 border-b border-gray-200">
           <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
             Content
           </h4>
           
-          {renderInput("Heading", section.props.heading, (v) =>
-            updateProp("heading", v),
-          )}
+          {section.props.heading !== undefined &&
+            renderInput("Heading", section.props.heading, (v) =>
+              updateProp("heading", v),
+            )}
 
           {section.props.subheading !== undefined &&
             renderInput(
@@ -999,6 +1202,58 @@ export default function PropertiesPanel() {
               updateProp("ctaLink", v),
             )}
 
+          {section.props.primaryButton !== undefined && (
+            <>
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <label className="block text-xs font-medium text-gray-700 mb-2">
+                  Primary Button
+                </label>
+                <input
+                  type="text"
+                  placeholder="Button Text"
+                  value={section.props.primaryButton?.text || ""}
+                  onChange={(e) =>
+                    updateProp("primaryButton.text", e.target.value)
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-2 text-sm"
+                />
+                <input
+                  type="text"
+                  placeholder="Button Link"
+                  value={section.props.primaryButton?.link || "#"}
+                  onChange={(e) =>
+                    updateProp("primaryButton.link", e.target.value)
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <label className="block text-xs font-medium text-gray-700 mb-2">
+                  Secondary Button
+                </label>
+                <input
+                  type="text"
+                  placeholder="Button Text"
+                  value={section.props.secondaryButton?.text || ""}
+                  onChange={(e) =>
+                    updateProp("secondaryButton.text", e.target.value)
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-2 text-sm"
+                />
+                <input
+                  type="text"
+                  placeholder="Button Link"
+                  value={section.props.secondaryButton?.link || "#"}
+                  onChange={(e) =>
+                    updateProp("secondaryButton.link", e.target.value)
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+            </>
+          )}
+
           {section.props.alignment !== undefined &&
             renderInput(
               "Alignment",
@@ -1027,6 +1282,7 @@ export default function PropertiesPanel() {
             "Features",
             "features",
             {
+              id: uuidv4(),
               icon: "zap",
               title: "New Feature",
               description: "Feature description",
@@ -1045,11 +1301,314 @@ export default function PropertiesPanel() {
             ),
           )}
 
+        {section.props.benefits &&
+          renderArrayEditor(
+            "Benefits",
+            "benefits",
+            {
+              id: uuidv4(),
+              icon: "check-circle",
+              title: "New Benefit",
+              description: "Benefit description",
+              metric: ""
+            },
+            (item, idx, update) => (
+              <>
+                {renderInput("Icon", item.icon, (v) => update("icon", v))}
+                {renderInput("Title", item.title, (v) => update("title", v))}
+                {renderInput(
+                  "Description",
+                  item.description,
+                  (v) => update("description", v),
+                  "textarea",
+                )}
+                {renderInput("Metric", item.metric || "", (v) => update("metric", v))}
+              </>
+            ),
+          )}
+
+        {section.props.stats &&
+          renderArrayEditor(
+            "Statistics",
+            "stats",
+            {
+              id: uuidv4(),
+              value: "0",
+              label: "Stat Label",
+              description: ""
+            },
+            (item, idx, update) => (
+              <>
+                {renderInput("Value", item.value, (v) => update("value", v))}
+                {renderInput("Label", item.label, (v) => update("label", v))}
+                {renderInput(
+                  "Description",
+                  item.description || "",
+                  (v) => update("description", v),
+                )}
+              </>
+            ),
+          )}
+
+        {section.props.steps &&
+          renderArrayEditor(
+            "Process Steps",
+            "steps",
+            {
+              id: uuidv4(),
+              icon: "circle",
+              title: "Step",
+              description: "Step description",
+              duration: "",
+              number: ""
+            },
+            (item, idx, update) => (
+              <>
+                {renderInput("Icon", item.icon, (v) => update("icon", v))}
+                {renderInput("Title", item.title, (v) => update("title", v))}
+                {renderInput(
+                  "Description",
+                  item.description,
+                  (v) => update("description", v),
+                  "textarea",
+                )}
+                {renderInput("Number/Label", item.number || item.duration || "", (v) => {
+                  if (item.duration !== undefined) {
+                    update("duration", v);
+                  } else {
+                    update("number", v);
+                  }
+                })}
+              </>
+            ),
+          )}
+
+        {section.props.logos &&
+          renderArrayEditor(
+            "Logos",
+            "logos",
+            {
+              id: uuidv4(),
+              image: "",
+              name: "Company",
+              width: "120"
+            },
+            (item, idx, update) => (
+              <>
+                {renderInput("Company Name", item.name, (v) => update("name", v))}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Logo Image
+                  </label>
+                  {item.image && (
+                    <div className="relative border-2 border-gray-200 rounded-lg p-2 mb-2">
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="w-full h-20 object-contain"
+                      />
+                      <button
+                        onClick={() => update("image", "")}
+                        className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded hover:bg-red-700"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+                  <button
+                    onClick={() =>
+                      openFilePicker({
+                        sectionId: section.id,
+                        arrayPath: "logos",
+                        index: idx,
+                        field: "image",
+                      })
+                    }
+                    className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 text-sm text-gray-600"
+                  >
+                    <ImageIcon className="w-4 h-4" />
+                    {item.image ? "Change Logo" : "Upload Logo"}
+                  </button>
+                </div>
+                {item.width !== undefined && (
+                  renderInput("Width (px)", item.width, (v) => update("width", v))
+                )}
+              </>
+            ),
+          )}
+
+        {section.props.studies &&
+          renderArrayEditor(
+            "Case Studies",
+            "studies",
+            {
+              id: uuidv4(),
+              image: "",
+              title: "Case Study",
+              client: "Client Name",
+              description: "Project description",
+              results: [],
+              metrics: [],
+              link: "#"
+            },
+            (item, idx, update) => (
+              <>
+                {renderInput("Title", item.title, (v) => update("title", v))}
+                {renderInput("Client", item.client, (v) => update("client", v))}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Image
+                  </label>
+                  {item.image && (
+                    <div className="relative border-2 border-gray-200 rounded-lg p-2 mb-2">
+                      <img
+                        src={item.image}
+                        alt={item.title}
+                        className="w-full h-32 object-cover rounded"
+                      />
+                      <button
+                        onClick={() => update("image", "")}
+                        className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded hover:bg-red-700"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+                  <button
+                    onClick={() =>
+                      openFilePicker({
+                        sectionId: section.id,
+                        arrayPath: "studies",
+                        index: idx,
+                        field: "image",
+                      })
+                    }
+                    className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 text-sm text-gray-600"
+                  >
+                    <ImageIcon className="w-4 h-4" />
+                    {item.image ? "Change Image" : "Upload Image"}
+                  </button>
+                </div>
+                {renderInput(
+                  "Description",
+                  item.description,
+                  (v) => update("description", v),
+                  "textarea",
+                )}
+                {renderInput("Link", item.link || "#", (v) => update("link", v))}
+                
+                {item.results && (
+                  <div className="mt-3">
+                    <label className="block text-xs font-medium text-gray-700 mb-2">
+                      Results (comma separated)
+                    </label>
+                    <input
+                      type="text"
+                      value={item.results.join(", ")}
+                      onChange={(e) => {
+                        const results = e.target.value.split(",").map(r => r.trim()).filter(r => r);
+                        update("results", results);
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      placeholder="300% increase, 50k users, etc"
+                    />
+                  </div>
+                )}
+
+                {item.metrics && (
+                  <div className="mt-3">
+                    <label className="block text-xs font-medium text-gray-700 mb-2">
+                      Metrics (JSON format)
+                    </label>
+                    <textarea
+                      value={JSON.stringify(item.metrics, null, 2)}
+                      onChange={(e) => {
+                        try {
+                          const metrics = JSON.parse(e.target.value);
+                          update("metrics", metrics);
+                        } catch (err) {}
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono"
+                      rows="4"
+                    />
+                  </div>
+                )}
+              </>
+            ),
+          )}
+
+        {section.props.badges &&
+          renderArrayEditor(
+            "Trust Badges",
+            "badges",
+            {
+              id: uuidv4(),
+              icon: "shield",
+              title: "Badge",
+              description: "Badge description"
+            },
+            (item, idx, update) => (
+              <>
+                {renderInput("Icon", item.icon, (v) => update("icon", v))}
+                {renderInput("Title", item.title, (v) => update("title", v))}
+                {renderInput(
+                  "Description",
+                  item.description,
+                  (v) => update("description", v),
+                )}
+              </>
+            ),
+          )}
+
+        {section.props.awards && (
+          <div className="mb-6 pb-6 border-b border-gray-200">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Awards & Recognition
+            </label>
+            <div className="space-y-2">
+              {section.props.awards.map((award, idx) => (
+                <div key={idx} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={award}
+                    onChange={(e) => {
+                      const newAwards = [...section.props.awards];
+                      newAwards[idx] = e.target.value;
+                      updateProp("awards", newAwards);
+                    }}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  />
+                  <button
+                    onClick={() => {
+                      const newAwards = [...section.props.awards];
+                      newAwards.splice(idx, 1);
+                      updateProp("awards", newAwards);
+                    }}
+                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() => {
+                  const awards = section.props.awards || [];
+                  updateProp("awards", [...awards, "New Award"]);
+                }}
+                className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-500 hover:text-indigo-600 text-sm text-gray-500"
+              >
+                + Add Award
+              </button>
+            </div>
+          </div>
+        )}
+
         {section.props.testimonials &&
           renderArrayEditor(
             "Testimonials",
             "testimonials",
             {
+              id: uuidv4(),
               name: "Name",
               role: "Role",
               content: "Testimonial content",
@@ -1106,6 +1665,67 @@ export default function PropertiesPanel() {
                   (v) => update("rating", parseInt(v)),
                   "number",
                 )}
+                {item.metric !== undefined &&
+                  renderInput("Metric", item.metric, (v) => update("metric", v))}
+              </>
+            ),
+          )}
+
+        {section.props.items && section.type === "gallery" &&
+          renderArrayEditor(
+            "Gallery Items",
+            "items",
+            {
+              id: uuidv4(),
+              image: "",
+              title: "New Item",
+              category: "",
+              description: ""
+            },
+            (item, idx, update) => (
+              <>
+                {renderInput("Title", item.title, (v) => update("title", v))}
+                {renderInput("Category", item.category || "", (v) => update("category", v))}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Image
+                  </label>
+                  {item.image && (
+                    <div className="relative border-2 border-gray-200 rounded-lg p-2 mb-2">
+                      <img
+                        src={item.image}
+                        alt={item.title}
+                        className="w-full h-32 object-cover rounded"
+                      />
+                      <button
+                        onClick={() => update("image", "")}
+                        className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded hover:bg-red-700"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+                  <button
+                    onClick={() =>
+                      openFilePicker({
+                        sectionId: section.id,
+                        arrayPath: "items",
+                        index: idx,
+                        field: "image",
+                      })
+                    }
+                    className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 text-sm text-gray-600"
+                  >
+                    <ImageIcon className="w-4 h-4" />
+                    {item.image ? "Change Image" : "Upload Image"}
+                  </button>
+                </div>
+                {renderInput(
+                  "Description",
+                  item.description || "",
+                  (v) => update("description", v),
+                  "textarea",
+                )}
               </>
             ),
           )}
@@ -1115,21 +1735,57 @@ export default function PropertiesPanel() {
             "Pricing Plans",
             "plans",
             {
+              id: uuidv4(),
               name: "Plan Name",
               price: "$0",
               period: "month",
+              description: "",
               features: [],
               ctaText: "Get Started",
               ctaLink: "#",
               highlighted: false,
+              badge: "",
+              savings: ""
             },
             (item, idx, update) => (
               <>
                 {renderInput("Name", item.name, (v) => update("name", v))}
                 {renderInput("Price", item.price, (v) => update("price", v))}
-                {renderInput("CTA Text", item.ctaText, (v) =>
-                  update("ctaText", v),
+                {renderInput("Period", item.period || "", (v) => update("period", v))}
+                {renderInput(
+                  "Description",
+                  item.description || "",
+                  (v) => update("description", v),
                 )}
+                {renderInput("CTA Text", item.ctaText, (v) => update("ctaText", v))}
+                {renderInput("CTA Link", item.ctaLink, (v) => update("ctaLink", v))}
+                <div className="mb-4">
+                  <label className="block text-xs font-medium text-gray-700 mb-2">
+                    Features (one per line)
+                  </label>
+                  <textarea
+                    value={(item.features || []).join("\n")}
+                    onChange={(e) => {
+                      const features = e.target.value.split("\n").filter(f => f.trim());
+                      update("features", features);
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    rows="4"
+                  />
+                </div>
+                <label className="flex items-center gap-2 mb-4 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={item.highlighted || false}
+                    onChange={(e) => update("highlighted", e.target.checked)}
+                    className="rounded border-gray-300 text-indigo-600"
+                  />
+                  <span className="text-sm text-gray-700">Highlighted Plan</span>
+                </label>
+                {item.highlighted && (
+                  renderInput("Badge Text", item.badge || "", (v) => update("badge", v))
+                )}
+                {renderInput("Savings Tag", item.savings || "", (v) => update("savings", v))}
               </>
             ),
           )}
@@ -1138,7 +1794,12 @@ export default function PropertiesPanel() {
           renderArrayEditor(
             "Form Fields",
             "fields",
-            { type: "text", label: "Field Label", required: false },
+            { 
+              id: uuidv4(),
+              type: "text", 
+              label: "Field Label", 
+              required: false 
+            },
             (item, idx, update) => (
               <>
                 {renderInput("Label", item.label, (v) => update("label", v))}
@@ -1155,6 +1816,37 @@ export default function PropertiesPanel() {
                   }),
                   "select",
                 )}
+                <label className="flex items-center gap-2 mb-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={item.required || false}
+                    onChange={(e) => update("required", e.target.checked)}
+                    className="rounded border-gray-300 text-indigo-600"
+                  />
+                  <span className="text-sm text-gray-700">Required</span>
+                </label>
+              </>
+            ),
+          )}
+
+        {section.props.faqs &&
+          renderArrayEditor(
+            "FAQ Items",
+            "faqs",
+            { 
+              id: uuidv4(),
+              question: "Question?", 
+              answer: "Answer" 
+            },
+            (item, idx, update) => (
+              <>
+                {renderInput("Question", item.question, (v) => update("question", v))}
+                {renderInput(
+                  "Answer",
+                  item.answer,
+                  (v) => update("answer", v),
+                  "textarea",
+                )}
               </>
             ),
           )}
@@ -1163,12 +1855,14 @@ export default function PropertiesPanel() {
           renderArrayEditor(
             "Questions",
             "questions",
-            { question: "Question?", answer: "Answer" },
+            { 
+              id: uuidv4(),
+              question: "Question?", 
+              answer: "Answer" 
+            },
             (item, idx, update) => (
               <>
-                {renderInput("Question", item.question, (v) =>
-                  update("question", v),
-                )}
+                {renderInput("Question", item.question, (v) => update("question", v))}
                 {renderInput(
                   "Answer",
                   item.answer,
@@ -1183,7 +1877,14 @@ export default function PropertiesPanel() {
           renderArrayEditor(
             "Team Members",
             "members",
-            { name: "Name", role: "Role", bio: "Short bio", image: "" },
+            { 
+              id: uuidv4(),
+              name: "Name", 
+              role: "Role", 
+              bio: "Short bio", 
+              image: "",
+              socials: {}
+            },
             (item, idx, update) => (
               <>
                 {renderInput("Name", item.name, (v) => update("name", v))}
@@ -1231,6 +1932,59 @@ export default function PropertiesPanel() {
               </>
             ),
           )}
+
+        {section.props.features && section.type === "cta" &&
+          renderArrayEditor(
+            "Features List",
+            "features",
+            "New Feature",
+            (item, idx, update) => (
+              <input
+                type="text"
+                value={item}
+                onChange={(e) => {
+                  const newFeatures = [...section.props.features];
+                  newFeatures[idx] = e.target.value;
+                  updateProp("features", newFeatures);
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              />
+            ),
+          )}
+
+        {section.props.benefits && section.type === "newsletter" &&
+          renderArrayEditor(
+            "Benefits",
+            "benefits",
+            "New Benefit",
+            (item, idx, update) => (
+              <input
+                type="text"
+                value={item}
+                onChange={(e) => {
+                  const newBenefits = [...section.props.benefits];
+                  newBenefits[idx] = e.target.value;
+                  updateProp("benefits", newBenefits);
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              />
+            ),
+          )}
+
+        {section.props.submitText !== undefined &&
+          renderInput("Submit Button Text", section.props.submitText, (v) =>
+            updateProp("submitText", v),
+          )}
+
+        {section.props.placeholder !== undefined &&
+          renderInput("Placeholder Text", section.props.placeholder, (v) =>
+            updateProp("placeholder", v),
+          )}
+
+        {section.props.buttonText !== undefined &&
+          renderInput("Button Text", section.props.buttonText, (v) =>
+            updateProp("buttonText", v),
+          )}
       </div>
 
       {selectedWebsite && (
@@ -1246,12 +2000,24 @@ export default function PropertiesPanel() {
             if (currentImageField.isStyle) {
               updateStyle(currentImageField.field, fileUrl);
             } else if (currentImageField.arrayPath) {
-              updateArrayItem(
-                currentImageField.arrayPath,
-                currentImageField.index,
-                currentImageField.field,
-                fileUrl,
-              );
+              if (currentImageField.arrayPath.includes('.')) {
+                const [parentPath, childPath] = currentImageField.arrayPath.split('.');
+                const parentArray = [...section.props[parentPath]];
+                const item = parentArray[currentImageField.index];
+                if (childPath === 'slides') {
+                  item[childPath] = item[childPath] || [];
+                  item[childPath][currentImageField.slideIndex] = item[childPath][currentImageField.slideIndex] || {};
+                  item[childPath][currentImageField.slideIndex][currentImageField.field] = fileUrl;
+                  updateProp(parentPath, parentArray);
+                }
+              } else {
+                updateArrayItem(
+                  currentImageField.arrayPath,
+                  currentImageField.index,
+                  currentImageField.field,
+                  fileUrl,
+                );
+              }
             } else {
               updateProp(currentImageField.field, fileUrl);
             }

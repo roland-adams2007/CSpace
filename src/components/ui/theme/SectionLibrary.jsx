@@ -13,11 +13,14 @@ export default function SectionLibrary({ onAddSection }) {
 
   const categories = [
     { name: "Hero Sections", types: ["hero"], icon: "layout" },
-    { name: "Features & Benefits", types: ["features", "stats"], icon: "zap" },
+    { name: "Features & Benefits", types: ["features", "benefits"], icon: "zap" },
+    { name: "Stats & Numbers", types: ["stats"], icon: "bar-chart" },
+    { name: "Process", types: ["process"], icon: "clock" },
     { name: "Content & Media", types: ["content", "gallery"], icon: "image" },
-    { name: "Social Proof", types: ["testimonials", "team"], icon: "users" },
+    { name: "Social Proof", types: ["testimonials", "team", "case-studies"], icon: "users" },
+    { name: "Trust & Logos", types: ["logos", "trust"], icon: "shield" },
     { name: "Conversion", types: ["cta", "pricing", "contact", "newsletter"], icon: "target" },
-    { name: "Information", types: ["faq", "process", "benefits", "logos"], icon: "info" },
+    { name: "Information", types: ["faq"], icon: "help-circle" },
   ];
 
   return (
@@ -76,6 +79,7 @@ export default function SectionLibrary({ onAddSection }) {
                           </p>
                           <p className="text-xs text-gray-500 capitalize">
                             {item.type} section
+                            {item.defaultProps?.carousel?.enabled && " • Carousel"}
                           </p>
                         </div>
                         <LucideIcons.Plus className="w-5 h-5 text-gray-400 group-hover:text-indigo-600 transition-colors flex-shrink-0" />
@@ -97,7 +101,7 @@ export default function SectionLibrary({ onAddSection }) {
               <div>
                 <h5 className="text-xs font-bold text-gray-900 mb-1">Pro Tip</h5>
                 <p className="text-xs text-gray-600 leading-relaxed">
-                  Start with a hero section, add features, then finish with a strong call-to-action for best results.
+                  Start with a hero section, add features, build trust with stats and testimonials, then finish with a strong call-to-action for best results.
                 </p>
               </div>
             </div>

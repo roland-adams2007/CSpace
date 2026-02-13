@@ -1,0 +1,3371 @@
+ThemeEditor.jsx:
+import { useThemeStore } from "../store/store";
+import SectionLibrary from "../components/ui/theme/SectionLibrary";
+import Canvas from "../components/ui/theme/Canvas";
+import PropertiesPanel from "../components/ui/theme/PropertiesPanel";
+import EditorHeader from "../components/ui/theme/EditorHeader";
+import TemplateModal from "../components/ui/modals/theme/TemplateModal";
+import SettingsModal from "../components/ui/modals/theme/SettingsModal";
+import SkeletonLoader from "../components/ui/theme/SkeletonLoader";
+
+export default function ThemeEditor() {
+  const { useThemeEditor } = useThemeStore();
+  const {
+    theme,
+    config,
+    saving,
+    loading,
+    isLoading,
+    isDirty,
+    selectedTemplate,
+    showSettings,
+    showTemplateModal,
+    canUndo,
+    canRedo,
+    setShowSettings,
+    setShowTemplateModal,
+    handleSave,
+    handleAddSection,
+    handlePreview,
+    handleClose,
+    applyTemplate,
+    handleThemeChange,
+    undo,
+    redo,
+  } = useThemeEditor();
+
+  if (isLoading || loading || !theme) {
+    return <SkeletonLoader />;
+  }
+
+  return (
+    <div className="h-screen flex flex-col bg-gray-50">
+      <EditorHeader
+        theme={theme}
+        isDirty={isDirty}
+        saving={saving}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onClose={handleClose}
+        onUndo={undo}
+        onRedo={redo}
+        onPreview={handlePreview}
+        onSave={handleSave}
+        onOpenTemplateModal={() => setShowTemplateModal(true)}
+        onToggleSettings={() => setShowSettings(!showSettings)}
+      />
+
+      <div className="flex-1 flex overflow-hidden">
+        <div className="w-64 flex-shrink-0">
+          <SectionLibrary onAddSection={handleAddSection} />
+        </div>
+
+        <div className="flex-1 overflow-hidden">
+          <Canvas selectedTemplate={selectedTemplate} />
+        </div>
+
+        <div className="w-80 flex-shrink-0">
+          <PropertiesPanel />
+        </div>
+      </div>
+
+      <TemplateModal
+        isOpen={showTemplateModal}
+        onClose={() => setShowTemplateModal(false)}
+        onApplyTemplate={applyTemplate}
+        selectedTemplate={selectedTemplate}
+        currentSectionsCount={config.layout.sections.length}
+      />
+
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        theme={theme}
+        onThemeChange={handleThemeChange}
+        config={config}
+        onSave={handleSave}
+      />
+    </div>
+  );
+}
+
+
+editorStore.js:
+import { create } from "zustand";
+
+export const useEditorStore = create((set, get) => ({
+  config: {
+    template: "classic",
+    previewMode: false,
+    header: {
+      type: "default",
+      props: {
+        logo: "",
+        menu: [],
+        ctaButton: { text: "", link: "" },
+      },
+      style: {
+        height: "80px",
+        sticky: false,
+        backgroundColor: "#ffffff",
+      },
+    },
+    footer: {
+      type: "default",
+      props: {
+        columns: [],
+        copyright: "",
+      },
+      style: {
+        backgroundColor: "#111827",
+        textColor: "#ffffff",
+        padding: "3rem 0",
+      },
+    },
+    layout: {
+      sections: [],
+    },
+    theme: {
+      colors: {
+        primary: "#6366f1",
+        secondary: "#8b5cf6",
+        accent: "#ec4899",
+        background: "#ffffff",
+        text: "#111827",
+      },
+      fonts: {
+        heading: "Inter",
+        body: "Inter",
+      },
+    },
+  },
+  
+  selectedSection: null,
+  selectedHeader: false,
+  selectedFooter: false,
+  selectedBlock: null,
+  history: [],
+  historyIndex: -1,
+  isDirty: false,
+
+  setConfig: (config) => {
+    set({ config, isDirty: false });
+    get().addToHistory(config);
+  },
+
+  updateConfig: (path, value) => {
+    const newConfig = { ...get().config };
+    const keys = path.split(".");
+    let current = newConfig;
+    
+    for (let i = 0; i < keys.length - 1; i++) {
+      if (!current[keys[i]]) current[keys[i]] = {};
+      current = current[keys[i]];
+    }
+    
+    current[keys[keys.length - 1]] = value;
+    set({ config: newConfig, isDirty: true });
+    get().addToHistory(newConfig);
+  },
+
+  addSection: (section) => {
+    const config = get().config;
+    const newConfig = {
+      ...config,
+      layout: {
+        ...config.layout,
+        sections: [...config.layout.sections, section],
+      },
+    };
+    set({ config: newConfig, isDirty: true });
+    get().addToHistory(newConfig);
+  },
+
+  updateSection: (sectionId, updates) => {
+    const config = get().config;
+    const newConfig = {
+      ...config,
+      layout: {
+        ...config.layout,
+        sections: config.layout.sections.map((section) =>
+          section.id === sectionId ? { ...section, ...updates } : section
+        ),
+      },
+    };
+    set({ config: newConfig, isDirty: true });
+    get().addToHistory(newConfig);
+  },
+
+  deleteSection: (sectionId) => {
+    const config = get().config;
+    const newConfig = {
+      ...config,
+      layout: {
+        ...config.layout,
+        sections: config.layout.sections.filter((section) => section.id !== sectionId),
+      },
+    };
+    set({ config: newConfig, isDirty: true, selectedSection: null });
+    get().addToHistory(newConfig);
+  },
+
+  reorderSections: (sections) => {
+    const config = get().config;
+    const newConfig = {
+      ...config,
+      layout: {
+        ...config.layout,
+        sections,
+      },
+    };
+    set({ config: newConfig, isDirty: true });
+    get().addToHistory(newConfig);
+  },
+
+  selectSection: (sectionId) => {
+    set({ selectedSection: sectionId, selectedHeader: false, selectedFooter: false, selectedBlock: null });
+  },
+
+  selectHeader: (value = true) => {
+    set({ selectedHeader: value, selectedSection: null, selectedFooter: false, selectedBlock: null });
+  },
+
+  selectFooter: (value = true) => {
+    set({ selectedFooter: value, selectedSection: null, selectedHeader: false, selectedBlock: null });
+  },
+
+  selectBlock: (sectionId, blockId) => {
+    set({ selectedSection: sectionId, selectedBlock: blockId, selectedHeader: false, selectedFooter: false });
+  },
+
+  addToHistory: (config) => {
+    const { history, historyIndex } = get();
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push(JSON.parse(JSON.stringify(config)));
+    
+    if (newHistory.length > 50) {
+      newHistory.shift();
+    }
+    
+    set({
+      history: newHistory,
+      historyIndex: newHistory.length - 1,
+    });
+  },
+
+  undo: () => {
+    const { history, historyIndex } = get();
+    if (historyIndex > 0) {
+      const newIndex = historyIndex - 1;
+      set({
+        config: JSON.parse(JSON.stringify(history[newIndex])),
+        historyIndex: newIndex,
+        isDirty: true,
+      });
+    }
+  },
+
+  redo: () => {
+    const { history, historyIndex } = get();
+    if (historyIndex < history.length - 1) {
+      const newIndex = historyIndex + 1;
+      set({
+        config: JSON.parse(JSON.stringify(history[newIndex])),
+        historyIndex: newIndex,
+        isDirty: true,
+      });
+    }
+  },
+
+  canUndo: () => {
+    return get().historyIndex > 0;
+  },
+
+  canRedo: () => {
+    const { history, historyIndex } = get();
+    return historyIndex < history.length - 1;
+  },
+
+  resetDirty: () => {
+    set({ isDirty: false });
+  },
+}));
+
+
+SortAbleSection.jsx:
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { GripVertical, Trash2, Copy, Eye, MoreVertical } from "lucide-react";
+import { useEditorStore } from "../../../store/store";
+import SectionRenderer from "./SectionRenderer";
+import { useState, useRef, useEffect } from "react";
+
+export default function SortableSection({ section, onSelect, themeColors }) {
+  const { deleteSection, selectedSection, updateSection } = useEditorStore();
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef(null);
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: section.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const isSelected = selectedSection === section.id;
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleDuplicate = (e) => {
+    e.stopPropagation();
+    const newSection = {
+      ...section,
+      id: `section-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    };
+    const { config, reorderSections } = useEditorStore.getState();
+    const sectionIndex = config.layout.sections.findIndex(
+      (s) => s.id === section.id,
+    );
+    const newSections = [...config.layout.sections];
+    newSections.splice(sectionIndex + 1, 0, newSection);
+    reorderSections(newSections);
+    setShowMenu(false);
+  };
+
+  const handleDelete = (e) => {
+    e.stopPropagation();
+    if (confirm("Are you sure you want to delete this section?")) {
+      deleteSection(section.id);
+    }
+    setShowMenu(false);
+  };
+
+  const toggleVisibility = (e) => {
+    e.stopPropagation();
+    updateSection(section.id, {
+      props: {
+        ...section.props,
+        hidden: !section.props.hidden,
+      },
+    });
+    setShowMenu(false);
+  };
+
+  const toggleMenu = (e) => {
+    e.stopPropagation();
+    setShowMenu(!showMenu);
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`relative group ${section.props.hidden ? "opacity-50" : ""} ${
+        isSelected ? "ring-2 ring-indigo-500" : ""
+      }`}
+      onClick={onSelect}
+    >
+      <div className="absolute -left-10 top-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex items-center gap-1">
+        <button
+          {...attributes}
+          {...listeners}
+          className="p-1.5 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 cursor-grab active:cursor-grabbing"
+          title="Drag to reorder"
+        >
+          <GripVertical className="w-4 h-4 text-gray-600" />
+        </button>
+
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={toggleMenu}
+            className="p-1.5 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 transition-colors"
+            title="More options"
+          >
+            <MoreVertical className="w-4 h-4 text-gray-600" />
+          </button>
+
+          {showMenu && (
+            <div className="absolute left-full top-0 ml-1 bg-white border border-gray-300 rounded-lg shadow-lg py-1 min-w-[140px] z-30">
+              <button
+                onClick={toggleVisibility}
+                className="w-full px-3 py-2 text-left hover:bg-gray-50 flex items-center gap-2"
+              >
+                <Eye
+                  className={`w-4 h-4 ${section.props.hidden ? "text-gray-400" : "text-gray-600"}`}
+                />
+                <span>{section.props.hidden ? "Show" : "Hide"}</span>
+              </button>
+              <button
+                onClick={handleDuplicate}
+                className="w-full px-3 py-2 text-left hover:bg-gray-50 flex items-center gap-2"
+              >
+                <Copy className="w-4 h-4 text-gray-600" />
+                <span>Duplicate</span>
+              </button>
+              <button
+                onClick={handleDelete}
+                className="w-full px-3 py-2 text-left hover:bg-red-50 text-red-600 flex items-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Delete</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className={isSelected ? "ring-2 ring-indigo-500 ring-inset" : ""}>
+        <SectionRenderer section={section} themeColors={themeColors} />
+      </div>
+    </div>
+  );
+}
+
+
+SectionRenderer.jsx:
+import { SECTION_TYPES } from "../../../utils/sectionLibrary";
+import * as LucideIcons from "lucide-react";
+
+export default function SectionRenderer({ section, themeColors, selectedTemplate }) {
+  const getIcon = (iconName) => {
+    if (!iconName) return null;
+    const IconComponent = LucideIcons[
+      iconName.split("-").map((word, i) =>
+        i === 0 ? word : word.charAt(0).toUpperCase() + word.slice(1)
+      ).join("")
+    ];
+    return IconComponent || LucideIcons.Box;
+  };
+
+  const getSectionStyle = () => {
+    const style = {
+      paddingTop: section.style?.padding?.top || "4rem",
+      paddingBottom: section.style?.padding?.bottom || "4rem",
+      position: "relative",
+    };
+
+    if (section.style?.backgroundType === "color") {
+      style.backgroundColor = section.style?.backgroundColor || "transparent";
+    } else if (section.style?.backgroundType === "gradient") {
+      style.background = section.style?.backgroundGradient || "linear-gradient(135deg, #667eea 0%, #764ba2 100%)";
+    } else if (section.style?.backgroundType === "image" && section.style?.backgroundImage) {
+      style.backgroundImage = `url(${section.style.backgroundImage})`;
+      style.backgroundSize = "cover";
+      style.backgroundPosition = "center";
+      style.backgroundRepeat = "no-repeat";
+    }
+
+    if (selectedTemplate === "minimal") {
+      style.maxWidth = "900px";
+      style.marginLeft = "auto";
+      style.marginRight = "auto";
+    }
+
+    return style;
+  };
+
+  const getOverlayStyle = () => {
+    if (section.style?.backgroundType === "image" && section.style?.backgroundImage && section.style?.backgroundOverlay > 0) {
+      return {
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: `rgba(0, 0, 0, ${section.style.backgroundOverlay})`,
+        zIndex: 1,
+      };
+    }
+    return null;
+  };
+
+  const renderHero = () => {
+    const { heading, subheading, ctaText, ctaLink, secondaryCtaText, secondaryCtaLink, image, alignment = "center" } = section.props;
+    const overlayStyle = getOverlayStyle();
+    const hasImage = image && image.trim() !== "";
+    const primaryColor = themeColors?.primary || "#6366f1";
+
+    if (selectedTemplate === "bold") {
+      return (
+        <div style={getSectionStyle()}>
+          {overlayStyle && <div style={overlayStyle}></div>}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+            <div className="inline-block mb-4 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-white text-sm font-semibold">
+              ✨ New & Improved
+            </div>
+            <h1 className="text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black text-white mb-8 leading-tight tracking-tight">
+              {heading || "Hero Heading"}
+            </h1>
+            <p className="text-xl md:text-2xl lg:text-3xl text-white/90 mb-12 max-w-4xl mx-auto font-medium">
+              {subheading || "Hero subheading goes here"}
+            </p>
+            <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
+              {ctaText && (
+                <a href={ctaLink || "#"} className="group relative px-10 py-5 bg-white text-gray-900 rounded-2xl font-bold text-lg transition-all shadow-2xl hover:shadow-3xl transform hover:scale-105 hover:-translate-y-1 overflow-hidden">
+                  <span className="relative z-10">{ctaText}</span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-yellow-200 to-pink-200 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                </a>
+              )}
+              {secondaryCtaText && (
+                <a href={secondaryCtaLink || "#"} className="px-10 py-5 border-3 border-white text-white rounded-2xl font-bold text-lg hover:bg-white hover:text-gray-900 transition-all">
+                  {secondaryCtaText}
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (selectedTemplate === "modern" && hasImage) {
+      return (
+        <div style={getSectionStyle()}>
+          {overlayStyle && <div style={overlayStyle}></div>}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+              <div className="space-y-8 order-2 lg:order-1">
+                <div>
+                  <div className="inline-block mb-4 px-4 py-1.5 bg-indigo-100 rounded-full text-indigo-600 text-sm font-semibold">
+                    🚀 Featured
+                  </div>
+                  <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold text-gray-900 leading-tight mb-6 bg-clip-text text-transparent bg-gradient-to-r from-gray-900 via-indigo-900 to-purple-900">
+                    {heading || "Hero Heading"}
+                  </h1>
+                  <p className="text-xl md:text-2xl text-gray-600 leading-relaxed">
+                    {subheading || "Hero subheading goes here"}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-4">
+                  {ctaText && (
+                    <a href={ctaLink || "#"} className="group px-10 py-4 rounded-2xl font-bold text-lg transition-all shadow-xl hover:shadow-2xl transform hover:-translate-y-1 relative overflow-hidden" style={{ backgroundColor: primaryColor }}>
+                      <span className="relative z-10 text-white">{ctaText}</span>
+                      <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 transform translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+                    </a>
+                  )}
+                  {secondaryCtaText && (
+                    <a href={secondaryCtaLink || "#"} className="px-10 py-4 border-2 border-gray-900 text-gray-900 rounded-2xl font-bold text-lg hover:bg-gray-900 hover:text-white transition-all">
+                      {secondaryCtaText}
+                    </a>
+                  )}
+                </div>
+                <div className="flex items-center gap-6 pt-4">
+                  <div className="flex -space-x-3">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div key={i} className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-400 to-purple-400 border-4 border-white"></div>
+                    ))}
+                  </div>
+                  <div className="text-sm">
+                    <div className="font-bold text-gray-900">100K+ Users</div>
+                    <div className="text-gray-600">Join our community</div>
+                  </div>
+                </div>
+              </div>
+              <div className="relative order-1 lg:order-2">
+                <div className="absolute -inset-4 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-3xl opacity-20 blur-2xl"></div>
+                <img src={image} alt={heading} className="relative w-full h-auto rounded-3xl shadow-2xl transform hover:scale-105 transition-transform duration-500" />
+                <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-3xl opacity-50" style={{ backgroundColor: primaryColor }}></div>
+                <div className="absolute -top-8 -right-8 w-24 h-24 bg-yellow-400 rounded-3xl opacity-50"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (selectedTemplate === "minimal") {
+      return (
+        <div style={getSectionStyle()}>
+          {overlayStyle && <div style={overlayStyle}></div>}
+          <div className="px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-light text-gray-900 mb-10 tracking-tight leading-tight">
+              {heading || "Hero Heading"}
+            </h1>
+            <p className="text-xl md:text-2xl text-gray-600 mb-14 max-w-3xl mx-auto leading-relaxed font-light">
+              {subheading || "Hero subheading goes here"}
+            </p>
+            <div className="flex flex-col sm:flex-row justify-center gap-6">
+              {ctaText && (
+                <a href={ctaLink || "#"} className="px-10 py-4 border-2 border-gray-900 text-gray-900 rounded-lg font-medium hover:bg-gray-900 hover:text-white transition-all">
+                  {ctaText}
+                </a>
+              )}
+              {secondaryCtaText && (
+                <a href={secondaryCtaLink || "#"} className="px-10 py-4 text-gray-600 hover:text-gray-900 font-medium group inline-flex items-center gap-2">
+                  {secondaryCtaText}
+                  <span className="group-hover:translate-x-1 transition-transform">→</span>
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (hasImage) {
+      return (
+        <div style={getSectionStyle()}>
+          {overlayStyle && <div style={overlayStyle}></div>}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+              <div className={alignment === "right" ? "lg:order-2" : ""}>
+                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight" style={{ color: section.style?.backgroundType === "image" ? "#ffffff" : undefined }}>
+                  {heading || "Hero Heading"}
+                </h1>
+                <p className="text-lg md:text-xl text-gray-600 mb-8 leading-relaxed" style={{ color: section.style?.backgroundType === "image" ? "#e5e7eb" : undefined }}>
+                  {subheading || "Hero subheading goes here"}
+                </p>
+                <div className="flex flex-wrap gap-4">
+                  {ctaText && (
+                    <a href={ctaLink || "#"} className="inline-block px-8 py-4 rounded-xl font-semibold text-lg transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1" style={{ backgroundColor: primaryColor, color: "#ffffff" }}>
+                      {ctaText}
+                    </a>
+                  )}
+                  {secondaryCtaText && (
+                    <a href={secondaryCtaLink || "#"} className="inline-block px-8 py-4 border-2 border-gray-900 text-gray-900 rounded-xl font-semibold hover:bg-gray-900 hover:text-white transition-all">
+                      {secondaryCtaText}
+                    </a>
+                  )}
+                </div>
+              </div>
+              <div className={alignment === "right" ? "lg:order-1" : ""}>
+                <img src={image} alt={heading} className="w-full h-auto rounded-2xl shadow-2xl" />
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div style={getSectionStyle()}>
+        {overlayStyle && <div style={overlayStyle}></div>}
+        <div className={`max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-${alignment} relative z-10`}>
+          <h1 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-gray-900 mb-8 leading-tight" style={{ color: section.style?.backgroundType === "image" ? "#ffffff" : undefined }}>
+            {heading || "Hero Heading"}
+          </h1>
+          <p className="text-xl md:text-2xl text-gray-600 mb-10 max-w-3xl mx-auto leading-relaxed" style={{ color: section.style?.backgroundType === "image" ? "#e5e7eb" : undefined }}>
+            {subheading || "Hero subheading goes here"}
+          </p>
+          <div className="flex flex-wrap gap-4 justify-center">
+            {ctaText && (
+              <a href={ctaLink || "#"} className="inline-block px-10 py-4 rounded-xl font-semibold text-lg transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1" style={{ backgroundColor: primaryColor, color: "#ffffff" }}>
+                {ctaText}
+              </a>
+            )}
+            {secondaryCtaText && (
+              <a href={secondaryCtaLink || "#"} className="inline-block px-10 py-4 border-2 border-white text-white rounded-xl font-semibold hover:bg-white/10 transition-all">
+                {secondaryCtaText}
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderFeatures = () => {
+    const { heading, subheading, features = [], columns = 3 } = section.props;
+    const overlayStyle = getOverlayStyle();
+    const primaryColor = themeColors?.primary || "#6366f1";
+
+    if (selectedTemplate === "bold") {
+      return (
+        <div style={getSectionStyle()}>
+          {overlayStyle && <div style={overlayStyle}></div>}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div className="text-center mb-20">
+              <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-gray-900 mb-6">
+                {heading || "Features"}
+              </h2>
+              {subheading && (
+                <p className="text-xl md:text-2xl text-gray-600 max-w-3xl mx-auto font-medium">
+                  {subheading}
+                </p>
+              )}
+            </div>
+            <div className={`grid grid-cols-1 ${columns >= 2 ? "md:grid-cols-2" : ""} ${columns >= 3 ? "lg:grid-cols-3" : ""} gap-8`}>
+              {features.map((feature) => {
+                const Icon = getIcon(feature.icon);
+                const colors = ["#ff6b6b", "#4ecdc4", "#ffe66d", "#a8e6cf", "#ff8b94", "#b4a7d6"];
+                const bgColor = feature.color || colors[Math.floor(Math.random() * colors.length)];
+                return (
+                  <div key={feature.id} className="group relative bg-white rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-2 border-4 border-transparent hover:border-current" style={{ borderColor: bgColor }}>
+                    <div className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-10 blur-3xl" style={{ backgroundColor: bgColor }}></div>
+                    <div className="relative">
+                      {Icon && (
+                        <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6 transform group-hover:scale-110 transition-transform" style={{ backgroundColor: bgColor }}>
+                          <Icon className="w-8 h-8 text-white" />
+                        </div>
+                      )}
+                      <h3 className="text-2xl font-bold text-gray-900 mb-4">
+                        {feature.title}
+                      </h3>
+                      <p className="text-gray-600 text-lg leading-relaxed">
+                        {feature.description}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (selectedTemplate === "modern") {
+      return (
+        <div style={getSectionStyle()}>
+          {overlayStyle && <div style={overlayStyle}></div>}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div className="text-center mb-20">
+              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+                {heading || "Features"}
+              </h2>
+              {subheading && (
+                <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+                  {subheading}
+                </p>
+              )}
+            </div>
+            <div className={`grid grid-cols-1 ${columns >= 2 ? "md:grid-cols-2" : ""} ${columns >= 3 ? "lg:grid-cols-3" : ""} gap-10`}>
+              {features.map((feature, index) => {
+                const Icon = getIcon(feature.icon);
+                return (
+                  <div key={feature.id} className="group relative">
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl opacity-0 group-hover:opacity-10 transition-opacity blur-xl"></div>
+                    <div className="relative bg-white p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-1 border border-gray-100">
+                      {Icon && (
+                        <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-6 shadow-md" style={{ backgroundColor: primaryColor }}>
+                          <Icon className="w-7 h-7 text-white" />
+                        </div>
+                      )}
+                      <h3 className="text-xl font-bold text-gray-900 mb-3">
+                        {feature.title}
+                      </h3>
+                      <p className="text-gray-600 leading-relaxed">
+                        {feature.description}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (selectedTemplate === "minimal") {
+      return (
+        <div style={getSectionStyle()}>
+          {overlayStyle && <div style={overlayStyle}></div>}
+          <div className="px-4 sm:px-6 lg:px-8 relative z-10">
+            <div className="text-center mb-20">
+              <h2 className="text-4xl md:text-5xl font-light text-gray-900 mb-6 tracking-tight">
+                {heading || "Features"}
+              </h2>
+              {subheading && (
+                <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                  {subheading}
+                </p>
+              )}
+            </div>
+            <div className={`grid grid-cols-1 ${columns >= 2 ? "md:grid-cols-2" : ""} ${columns >= 4 ? "lg:grid-cols-4" : columns >= 3 ? "lg:grid-cols-3" : ""} gap-16`}>
+              {features.map((feature) => {
+                const Icon = getIcon(feature.icon);
+                return (
+                  <div key={feature.id} className="text-center group">
+                    {Icon && (
+                      <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 border border-gray-200 group-hover:border-gray-900 transition-colors">
+                        <Icon className="w-9 h-9 text-gray-600 group-hover:text-gray-900 transition-colors" />
+                      </div>
+                    )}
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">
+                      {feature.title}
+                    </h3>
+                    <p className="text-gray-600 text-sm leading-relaxed">
+                      {feature.description}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div style={getSectionStyle()}>
+        {overlayStyle && <div style={overlayStyle}></div>}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6" style={{ color: section.style?.backgroundType === "image" ? "#ffffff" : undefined }}>
+              {heading || "Features"}
+            </h2>
+            {subheading && (
+              <p className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto" style={{ color: section.style?.backgroundType === "image" ? "#e5e7eb" : undefined }}>
+                {subheading}
+              </p>
+            )}
+          </div>
+          <div className={`grid grid-cols-1 ${columns >= 2 ? "md:grid-cols-2" : ""} ${columns >= 3 ? "lg:grid-cols-3" : ""} ${columns >= 4 ? "xl:grid-cols-4" : ""} gap-8`}>
+            {features.map((feature) => {
+              const Icon = getIcon(feature.icon);
+              return (
+                <div key={feature.id} className="group text-center p-8 rounded-2xl transition-all hover:shadow-xl border border-gray-100 hover:border-transparent bg-white">
+                  {Icon && (
+                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-md group-hover:shadow-lg transition-shadow" style={{ backgroundColor: primaryColor }}>
+                      <Icon className="w-8 h-8 text-white" />
+                    </div>
+                  )}
+                  <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                    {feature.title}
+                  </h3>
+                  <p className="text-gray-600 leading-relaxed">
+                    {feature.description}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderCTA = () => {
+    const { heading, subheading, primaryButton, secondaryButton, features, highlightText } = section.props;
+    const overlayStyle = getOverlayStyle();
+    const primaryColor = themeColors?.primary || "#6366f1";
+
+    if (selectedTemplate === "bold") {
+      return (
+        <div style={getSectionStyle()}>
+          {overlayStyle && <div style={overlayStyle}></div>}
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+            {highlightText && (
+              <div className="inline-block mb-6 px-6 py-2 bg-white/20 backdrop-blur-sm rounded-full text-white text-sm font-bold">
+                {highlightText}
+              </div>
+            )}
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-black mb-8 text-white leading-tight">
+              {heading || "Ready to get started?"}
+            </h2>
+            {subheading && (
+              <p className="text-xl md:text-2xl mb-12 text-white/90 max-w-3xl mx-auto">
+                {subheading}
+              </p>
+            )}
+            <div className="flex flex-col sm:flex-row gap-6 justify-center mb-8">
+              {primaryButton?.text && (
+                <a href={primaryButton.link || "#"} className="px-12 py-5 bg-white text-gray-900 rounded-2xl font-bold text-lg transition-all shadow-2xl hover:shadow-3xl transform hover:scale-105">
+                  {primaryButton.text}
+                </a>
+              )}
+              {secondaryButton?.text && (
+                <a href={secondaryButton.link || "#"} className="px-12 py-5 border-3 border-white text-white rounded-2xl font-bold text-lg hover:bg-white hover:text-gray-900 transition-all">
+                  {secondaryButton.text}
+                </a>
+              )}
+            </div>
+            {features && features.length > 0 && (
+              <div className="flex flex-wrap gap-6 justify-center text-white/80 text-sm">
+                {features.map((feature, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <LucideIcons.Check className="w-5 h-5" />
+                    <span>{feature}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (selectedTemplate === "minimal") {
+      return (
+        <div style={getSectionStyle()}>
+          {overlayStyle && <div style={overlayStyle}></div>}
+          <div className="px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+            <h2 className="text-4xl md:text-5xl font-light text-white mb-8 tracking-tight">
+              {heading || "Ready to get started?"}
+            </h2>
+            {subheading && (
+              <p className="text-lg md:text-xl mb-12 text-white/90 max-w-2xl mx-auto">
+                {subheading}
+              </p>
+            )}
+            <div className="flex flex-col sm:flex-row gap-6 justify-center">
+              {primaryButton?.text && (
+                <a href={primaryButton.link || "#"} className="px-10 py-4 bg-white text-black rounded-lg font-medium hover:bg-gray-100 transition-all">
+                  {primaryButton.text}
+                </a>
+              )}
+              {secondaryButton?.text && (
+                <a href={secondaryButton.link || "#"} className="px-10 py-4 border-2 border-white text-white rounded-lg font-medium hover:bg-white hover:text-black transition-all">
+                  {secondaryButton.text}
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div style={getSectionStyle()}>
+        {overlayStyle && <div style={overlayStyle}></div>}
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-8 text-white leading-tight">
+            {heading || "Ready to get started?"}
+          </h2>
+          {subheading && (
+            <p className="text-lg md:text-xl mb-12 text-white/90 max-w-2xl mx-auto">
+              {subheading}
+            </p>
+          )}
+          <div className="flex flex-col sm:flex-row gap-6 justify-center mb-8">
+            {primaryButton?.text && (
+              <a href={primaryButton.link || "#"} className="px-10 py-4 bg-white rounded-xl font-semibold text-lg transition-all shadow-xl hover:shadow-2xl transform hover:-translate-y-1" style={{ color: primaryColor }}>
+                {primaryButton.text}
+              </a>
+            )}
+            {secondaryButton?.text && (
+              <a href={secondaryButton.link || "#"} className="px-10 py-4 border-2 border-white text-white rounded-xl font-semibold hover:bg-white/10 transition-all">
+                {secondaryButton.text}
+              </a>
+            )}
+          </div>
+          {features && features.length > 0 && (
+            <div className="flex flex-wrap gap-6 justify-center text-white/80 text-sm">
+              {features.map((feature, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <LucideIcons.Check className="w-5 h-5" />
+                  <span>{feature}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderContent = () => {
+    const { heading, content, image, imagePosition = "right", showcaseItems } = section.props;
+    const overlayStyle = getOverlayStyle();
+    const hasImage = image && image.trim() !== "";
+
+    if (selectedTemplate === "minimal") {
+      return (
+        <div style={getSectionStyle()}>
+          {overlayStyle && <div style={overlayStyle}></div>}
+          <div className="px-4 sm:px-6 lg:px-8 relative z-10">
+            <h2 className="text-4xl md:text-5xl font-light text-gray-900 mb-12 tracking-tight text-center">
+              {heading || "Content Heading"}
+            </h2>
+            <div className="prose prose-lg prose-gray max-w-none mx-auto text-center" style={{ color: section.style?.backgroundType === "image" ? "#e5e7eb" : undefined }} dangerouslySetInnerHTML={{ __html: content || "<p>Content goes here...</p>" }} />
+          </div>
+        </div>
+      );
+    }
+
+    if (hasImage) {
+      return (
+        <div style={getSectionStyle()}>
+          {overlayStyle && <div style={overlayStyle}></div>}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+              <div className={imagePosition === "left" ? "lg:order-2" : ""}>
+                <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-8" style={{ color: section.style?.backgroundType === "image" ? "#ffffff" : undefined }}>
+                  {heading || "Content Heading"}
+                </h2>
+                <div className="prose prose-lg prose-gray max-w-none" style={{ color: section.style?.backgroundType === "image" ? "#e5e7eb" : undefined }} dangerouslySetInnerHTML={{ __html: content || "<p>Content goes here...</p>" }} />
+                {showcaseItems && showcaseItems.length > 0 && (
+                  <div className="grid grid-cols-3 gap-8 mt-12">
+                    {showcaseItems.map((item, idx) => {
+                      const Icon = getIcon(item.icon);
+                      return (
+                        <div key={idx} className="text-center">
+                          {Icon && <Icon className="w-8 h-8 mx-auto mb-3" style={{ color: themeColors?.primary }} />}
+                          <div className="text-3xl font-bold text-gray-900">{item.stat}</div>
+                          <div className="text-sm text-gray-600 mt-1">{item.label}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              <div className={imagePosition === "left" ? "lg:order-1" : ""}>
+                <div className="relative">
+                  <div className="absolute -inset-4 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-3xl opacity-20 blur-2xl"></div>
+                  <img src={image} alt={heading} className="relative w-full h-auto rounded-2xl shadow-2xl" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div style={getSectionStyle()}>
+        {overlayStyle && <div style={overlayStyle}></div>}
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-10" style={{ color: section.style?.backgroundType === "image" ? "#ffffff" : undefined }}>
+            {heading || "Content Heading"}
+          </h2>
+          <div className="prose prose-lg prose-gray max-w-none" style={{ color: section.style?.backgroundType === "image" ? "#e5e7eb" : undefined }} dangerouslySetInnerHTML={{ __html: content || "<p>Content goes here...</p>" }} />
+        </div>
+      </div>
+    );
+  };
+
+  const renderGallery = () => {
+    const { heading, subheading, images = [], items = [], columns = 3 } = section.props;
+    const overlayStyle = getOverlayStyle();
+    const displayItems = items.length > 0 ? items : images;
+
+    return (
+      <div style={getSectionStyle()}>
+        {overlayStyle && <div style={overlayStyle}></div>}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4" style={{ color: section.style?.backgroundType === "image" ? "#ffffff" : undefined }}>
+              {heading || "Gallery"}
+            </h2>
+            {subheading && (
+              <p className="text-lg text-gray-600 max-w-2xl mx-auto" style={{ color: section.style?.backgroundType === "image" ? "#e5e7eb" : undefined }}>
+                {subheading}
+              </p>
+            )}
+          </div>
+          <div className={`grid grid-cols-1 ${columns >= 2 ? "sm:grid-cols-2" : ""} ${columns >= 3 ? "lg:grid-cols-3" : ""} ${columns >= 4 ? "xl:grid-cols-4" : ""} gap-8`}>
+            {displayItems.length > 0 ? displayItems.map((item, idx) => (
+              <div key={item.id || idx} className="group relative aspect-square bg-gray-200 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-2">
+                {item.image ? (
+                  <img src={item.image} alt={item.title || `Gallery ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                ) : typeof item === "string" ? (
+                  <img src={item} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300"></div>
+                )}
+                {item.title && (
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-6">
+                    <div className="text-white">
+                      <h3 className="text-xl font-bold mb-1">{item.title}</h3>
+                      {item.category && <p className="text-sm text-gray-300">{item.category}</p>}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )) : Array(6).fill(0).map((_, idx) => (
+              <div key={idx} className="aspect-square bg-gradient-to-br from-gray-200 to-gray-300 rounded-2xl"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderTestimonials = () => {
+    const { heading, subheading, testimonials = [] } = section.props;
+    const overlayStyle = getOverlayStyle();
+    const primaryColor = themeColors?.primary || "#6366f1";
+
+    if (selectedTemplate === "modern" || selectedTemplate === "bold") {
+      return (
+        <div style={getSectionStyle()}>
+          {overlayStyle && <div style={overlayStyle}></div>}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div className="text-center mb-20">
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6" style={{ color: section.style?.backgroundType === "image" ? "#ffffff" : undefined }}>
+                {heading || "Testimonials"}
+              </h2>
+              {subheading && (
+                <p className="text-lg text-gray-600 max-w-2xl mx-auto" style={{ color: section.style?.backgroundType === "image" ? "#e5e7eb" : undefined }}>
+                  {subheading}
+                </p>
+              )}
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+              {testimonials.map((test) => (
+                <div key={test.id} className="relative group">
+                  <div className="absolute -inset-2 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-3xl opacity-0 group-hover:opacity-20 transition-opacity blur-xl"></div>
+                  <div className="relative p-10 bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-1">
+                    <div className="absolute -top-6 -left-6 text-8xl text-indigo-100 font-serif">"</div>
+                    <div className="flex items-center mb-6">
+                      {[...Array(test.rating || 5)].map((_, i) => (
+                        <LucideIcons.Star key={i} className="w-5 h-5 fill-current text-yellow-400" />
+                      ))}
+                    </div>
+                    <p className="text-gray-700 mb-8 text-lg leading-relaxed relative z-10">
+                      {test.content}
+                    </p>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className="w-16 h-16 bg-gradient-to-br from-indigo-400 to-purple-400 rounded-full mr-4 overflow-hidden border-4 border-white shadow-lg">
+                          {test.avatar && <img src={test.avatar} alt={test.name} className="w-full h-full object-cover" />}
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-900 text-lg">{test.name}</p>
+                          <p className="text-sm text-gray-600">{test.role}</p>
+                        </div>
+                      </div>
+                      {test.metric && (
+                        <div className="text-right">
+                          <div className="text-2xl font-bold" style={{ color: primaryColor }}>{test.metric}</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div style={getSectionStyle()}>
+        {overlayStyle && <div style={overlayStyle}></div>}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-16 text-center" style={{ color: section.style?.backgroundType === "image" ? "#ffffff" : undefined }}>
+            {heading || "Testimonials"}
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+            {testimonials.map((test) => (
+              <div key={test.id} className="bg-white p-10 rounded-2xl shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-1">
+                <div className="flex items-center mb-6">
+                  {[...Array(test.rating || 5)].map((_, i) => (
+                    <LucideIcons.Star key={i} className="w-5 h-5 fill-current" style={{ color: primaryColor }} />
+                  ))}
+                </div>
+                <p className="text-gray-700 mb-8 text-lg leading-relaxed">"{test.content}"</p>
+                <div className="flex items-center">
+                  <div className="w-14 h-14 bg-gray-300 rounded-full mr-4 overflow-hidden">
+                    {test.avatar && <img src={test.avatar} alt={test.name} className="w-full h-full object-cover" />}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900 text-lg">{test.name}</p>
+                    <p className="text-sm text-gray-600">{test.role}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderPricing = () => {
+    const { heading, subheading, plans = [] } = section.props;
+    const overlayStyle = getOverlayStyle();
+    const primaryColor = themeColors?.primary || "#6366f1";
+
+    return (
+      <div style={getSectionStyle()}>
+        {overlayStyle && <div style={overlayStyle}></div>}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="text-center mb-20">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6" style={{ color: section.style?.backgroundType === "image" ? "#ffffff" : undefined }}>
+              {heading || "Pricing"}
+            </h2>
+            {subheading && (
+              <p className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto" style={{ color: section.style?.backgroundType === "image" ? "#e5e7eb" : undefined }}>
+                {subheading}
+              </p>
+            )}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+            {plans.map((plan) => (
+              <div key={plan.id} className={`relative rounded-3xl p-10 transition-all hover:shadow-2xl ${plan.highlighted ? "ring-4 shadow-2xl transform lg:scale-110 z-10" : "border-2 border-gray-200 bg-white hover:border-gray-300"}`} style={plan.highlighted ? { borderColor: primaryColor, backgroundColor: "white" } : {}}>
+                {plan.badge && plan.highlighted && (
+                  <div className="absolute -top-5 left-1/2 transform -translate-x-1/2 px-6 py-2 rounded-full text-white text-sm font-bold shadow-lg" style={{ backgroundColor: primaryColor }}>
+                    {plan.badge}
+                  </div>
+                )}
+                {plan.savings && (
+                  <div className="absolute -top-3 -right-3 px-4 py-1.5 bg-green-500 text-white rounded-full text-sm font-bold shadow-lg">
+                    {plan.savings}
+                  </div>
+                )}
+                <div className="mb-8">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h3>
+                  {plan.description && (
+                    <p className="text-sm text-gray-600">{plan.description}</p>
+                  )}
+                </div>
+                <div className="mb-10">
+                  <span className="text-6xl font-bold text-gray-900">{plan.price}</span>
+                  {plan.period && <span className="text-gray-600 text-lg ml-2">/{plan.period}</span>}
+                </div>
+                <ul className="space-y-5 mb-12">
+                  {plan.features.map((feature, idx) => (
+                    <li key={idx} className="flex items-start text-gray-700">
+                      <LucideIcons.Check className="w-6 h-6 text-green-500 mr-3 flex-shrink-0 mt-0.5" />
+                      <span className="text-base">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <a href={plan.ctaLink || "#"} className={`block w-full py-4 rounded-xl font-bold text-lg text-center transition-all ${plan.highlighted ? "text-white shadow-xl hover:shadow-2xl transform hover:-translate-y-1" : "bg-gray-100 text-gray-900 hover:bg-gray-200"}`} style={plan.highlighted ? { backgroundColor: primaryColor } : {}}>
+                  {plan.ctaText}
+                </a>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderContact = () => {
+    const { heading, subheading, fields = [], submitText } = section.props;
+    const overlayStyle = getOverlayStyle();
+    const primaryColor = themeColors?.primary || "#6366f1";
+
+    return (
+      <div style={getSectionStyle()}>
+        {overlayStyle && <div style={overlayStyle}></div>}
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6" style={{ color: section.style?.backgroundType === "image" ? "#ffffff" : undefined }}>
+              {heading || "Contact Us"}
+            </h2>
+            {subheading && (
+              <p className="text-lg md:text-xl text-gray-600" style={{ color: section.style?.backgroundType === "image" ? "#e5e7eb" : undefined }}>
+                {subheading}
+              </p>
+            )}
+          </div>
+          <form className="space-y-8 bg-white p-10 rounded-3xl shadow-2xl">
+            {fields.map((field) => (
+              <div key={field.id}>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  {field.label}
+                  {field.required && <span className="text-red-500 ml-1">*</span>}
+                </label>
+                {field.type === "textarea" ? (
+                  <textarea className="w-full px-5 py-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:border-transparent transition-all resize-none" style={{ "--tw-ring-color": primaryColor }} rows="6"></textarea>
+                ) : (
+                  <input type={field.type} className="w-full px-5 py-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:border-transparent transition-all" style={{ "--tw-ring-color": primaryColor }} />
+                )}
+              </div>
+            ))}
+            <button className="w-full py-5 text-white rounded-xl font-bold text-lg transition-all shadow-xl hover:shadow-2xl transform hover:-translate-y-1" style={{ backgroundColor: primaryColor }}>
+              {submitText || "Submit"}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
+  const renderTeam = () => {
+    const { heading, subheading, members = [], columns = 3 } = section.props;
+    const overlayStyle = getOverlayStyle();
+
+    return (
+      <div style={getSectionStyle()}>
+        {overlayStyle && <div style={overlayStyle}></div>}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="text-center mb-20">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6" style={{ color: section.style?.backgroundType === "image" ? "#ffffff" : undefined }}>
+              {heading || "Our Team"}
+            </h2>
+            {subheading && (
+              <p className="text-lg text-gray-600 max-w-2xl mx-auto" style={{ color: section.style?.backgroundType === "image" ? "#e5e7eb" : undefined }}>
+                {subheading}
+              </p>
+            )}
+          </div>
+          <div className={`grid grid-cols-1 ${columns >= 2 ? "sm:grid-cols-2" : ""} ${columns >= 3 ? "lg:grid-cols-3" : ""} ${columns >= 4 ? "xl:grid-cols-4" : ""} gap-12`}>
+            {members.map((member) => (
+              <div key={member.id} className="text-center group">
+                <div className="relative mb-8 inline-block">
+                  <div className="absolute -inset-2 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full opacity-0 group-hover:opacity-20 blur-xl transition-opacity"></div>
+                  <div className="relative w-48 h-48 bg-gradient-to-br from-gray-200 to-gray-300 rounded-full mx-auto overflow-hidden shadow-xl group-hover:shadow-2xl transition-shadow">
+                    {member.image && <img src={member.image} alt={member.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />}
+                  </div>
+                </div>
+                <h3 className="text-2xl font-semibold text-gray-900 mb-2" style={{ color: section.style?.backgroundType === "image" ? "#ffffff" : undefined }}>
+                  {member.name}
+                </h3>
+                <p className="mb-4 font-medium" style={{ color: themeColors?.primary || "#6366f1" }}>
+                  {member.role}
+                </p>
+                <p className="text-gray-600 text-sm leading-relaxed" style={{ color: section.style?.backgroundType === "image" ? "#d1d5db" : undefined }}>
+                  {member.bio}
+                </p>
+                {member.socials && (
+                  <div className="flex justify-center gap-4 mt-6">
+                    {Object.entries(member.socials).map(([platform, link]) => (
+                      <a key={platform} href={link} className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors">
+                        <LucideIcons.Link className="w-5 h-5 text-gray-600" />
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderFAQ = () => {
+    const { heading, subheading, questions = [], faqs = [] } = section.props;
+    const overlayStyle = getOverlayStyle();
+    const items = faqs.length > 0 ? faqs : questions;
+
+    return (
+      <div style={getSectionStyle()}>
+        {overlayStyle && <div style={overlayStyle}></div>}
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="text-center mb-20">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6" style={{ color: section.style?.backgroundType === "image" ? "#ffffff" : undefined }}>
+              {heading || "FAQ"}
+            </h2>
+            {subheading && (
+              <p className="text-lg text-gray-600 max-w-2xl mx-auto" style={{ color: section.style?.backgroundType === "image" ? "#e5e7eb" : undefined }}>
+                {subheading}
+              </p>
+            )}
+          </div>
+          <div className="space-y-6">
+            {items.map((q) => (
+              <div key={q.id} className="bg-white border-2 border-gray-200 rounded-2xl p-8 hover:shadow-xl hover:border-transparent transition-all">
+                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-start gap-3">
+                  <span className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ backgroundColor: themeColors?.primary || "#6366f1" }}>
+                    Q
+                  </span>
+                  <span className="flex-1">{q.question}</span>
+                </h3>
+                <p className="text-gray-600 leading-relaxed pl-11">{q.answer}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderStats = () => {
+    const { stats = [] } = section.props;
+    const overlayStyle = getOverlayStyle();
+
+    return (
+      <div style={getSectionStyle()}>
+        {overlayStyle && <div style={overlayStyle}></div>}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+            {stats.map((stat) => (
+              <div key={stat.id} className="text-center group">
+                <div className="text-4xl md:text-5xl lg:text-6xl font-black text-gray-900 mb-2 group-hover:scale-110 transition-transform" style={{ color: themeColors?.primary }}>
+                  {stat.value}
+                </div>
+                <div className="text-lg font-semibold text-gray-900 mb-1">
+                  {stat.label}
+                </div>
+                {stat.description && (
+                  <div className="text-sm text-gray-600">
+                    {stat.description}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderNewsletter = () => {
+    const { heading, subheading, placeholder, buttonText, benefits = [] } = section.props;
+    const overlayStyle = getOverlayStyle();
+    const primaryColor = themeColors?.primary || "#6366f1";
+
+    return (
+      <div style={getSectionStyle()}>
+        {overlayStyle && <div style={overlayStyle}></div>}
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-6">
+            {heading || "Stay Updated"}
+          </h2>
+          {subheading && (
+            <p className="text-lg md:text-xl text-white/90 mb-10">
+              {subheading}
+            </p>
+          )}
+          <div className="flex flex-col sm:flex-row gap-4 max-w-xl mx-auto mb-8">
+            <input type="email" placeholder={placeholder || "Enter your email"} className="flex-1 px-6 py-4 rounded-xl border-2 border-transparent focus:border-white focus:outline-none text-lg" />
+            <button className="px-8 py-4 bg-white text-gray-900 rounded-xl font-bold text-lg hover:bg-gray-100 transition-all shadow-lg">
+              {buttonText || "Subscribe"}
+            </button>
+          </div>
+          {benefits.length > 0 && (
+            <div className="flex flex-wrap gap-6 justify-center text-white/80 text-sm">
+              {benefits.map((benefit, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <LucideIcons.Check className="w-5 h-5" />
+                  <span>{benefit}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  switch (section.type) {
+    case SECTION_TYPES.HERO:
+      return renderHero();
+    case SECTION_TYPES.FEATURES:
+      return renderFeatures();
+    case SECTION_TYPES.CTA:
+      return renderCTA();
+    case SECTION_TYPES.CONTENT:
+      return renderContent();
+    case SECTION_TYPES.GALLERY:
+      return renderGallery();
+    case SECTION_TYPES.TESTIMONIALS:
+      return renderTestimonials();
+    case SECTION_TYPES.PRICING:
+      return renderPricing();
+    case SECTION_TYPES.CONTACT:
+      return renderContact();
+    case SECTION_TYPES.TEAM:
+      return renderTeam();
+    case SECTION_TYPES.FAQ:
+      return renderFAQ();
+    case "stats":
+      return renderStats();
+    case "newsletter":
+      return renderNewsletter();
+    default:
+      return (
+        <div className="py-16 text-center text-gray-500">
+          Unknown section type: {section.type}
+        </div>
+      );
+  }
+}
+
+sectionLibrary.jsx:
+export const SECTION_TYPES = {
+  HERO: "hero",
+  FEATURES: "features",
+  CTA: "cta",
+  CONTENT: "content",
+  GALLERY: "gallery",
+  TESTIMONIALS: "testimonials",
+  PRICING: "pricing",
+  CONTACT: "contact",
+  TEAM: "team",
+  FAQ: "faq",
+  STATS: "stats",
+  NEWSLETTER: "newsletter",
+  PROCESS: "process",
+  BENEFITS: "benefits",
+  LOGOS: "logos",
+};
+
+export const SECTION_LIBRARY = [
+  {
+    id: "hero-1",
+    type: SECTION_TYPES.HERO,
+    name: "Hero - Centered",
+    icon: "layout",
+    defaultProps: {
+      heading: "Transform Your Digital Presence",
+      subheading: "Build amazing websites in minutes with our intuitive platform",
+      ctaText: "Get Started Free",
+      ctaLink: "#",
+      secondaryCtaText: "Watch Demo",
+      secondaryCtaLink: "#demo",
+      alignment: "center",
+      image: "",
+    },
+  },
+  {
+    id: "hero-2",
+    type: SECTION_TYPES.HERO,
+    name: "Hero - Split",
+    icon: "columns",
+    defaultProps: {
+      heading: "Build Your Dream Website",
+      subheading: "Professional tools for modern creators and businesses",
+      ctaText: "Start Free Trial",
+      ctaLink: "#",
+      secondaryCtaText: "Learn More",
+      secondaryCtaLink: "#features",
+      image: "",
+      alignment: "left",
+    },
+  },
+  {
+    id: "hero-bold",
+    type: SECTION_TYPES.HERO,
+    name: "Hero - Bold",
+    icon: "sparkles",
+    defaultProps: {
+      heading: "Make an Impact",
+      subheading: "Stand out with bold design and powerful features",
+      ctaText: "Get Started",
+      ctaLink: "#",
+      secondaryCtaText: "See Examples",
+      secondaryCtaLink: "#",
+      alignment: "center",
+      image: "",
+    },
+  },
+  {
+    id: "features-grid",
+    type: SECTION_TYPES.FEATURES,
+    name: "Features - Grid",
+    icon: "grid",
+    defaultProps: {
+      heading: "Everything You Need",
+      subheading: "Powerful features to help you succeed",
+      features: [
+        {
+          id: "f1",
+          icon: "zap",
+          title: "Lightning Fast",
+          description: "Optimized for speed with instant load times",
+        },
+        {
+          id: "f2",
+          icon: "shield",
+          title: "Secure & Safe",
+          description: "Enterprise-grade security built-in",
+        },
+        {
+          id: "f3",
+          icon: "smartphone",
+          title: "Mobile Ready",
+          description: "Perfect on every device and screen size",
+        },
+        {
+          id: "f4",
+          icon: "globe",
+          title: "Global CDN",
+          description: "Fast delivery worldwide",
+        },
+        {
+          id: "f5",
+          icon: "code",
+          title: "Developer Friendly",
+          description: "Custom code when you need it",
+        },
+        {
+          id: "f6",
+          icon: "trending-up",
+          title: "SEO Optimized",
+          description: "Rank higher in search results",
+        },
+      ],
+      columns: 3,
+    },
+  },
+  {
+    id: "features-list",
+    type: SECTION_TYPES.FEATURES,
+    name: "Features - List",
+    icon: "list",
+    defaultProps: {
+      heading: "Why Choose Us",
+      subheading: "Built for success from day one",
+      features: [
+        {
+          id: "f1",
+          icon: "check-circle",
+          title: "Easy to Use",
+          description: "Intuitive interface designed for everyone",
+        },
+        {
+          id: "f2",
+          icon: "check-circle",
+          title: "Powerful Tools",
+          description: "Advanced features when you need them",
+        },
+        {
+          id: "f3",
+          icon: "check-circle",
+          title: "Flexible Design",
+          description: "Customize every aspect of your site",
+        },
+      ],
+      columns: 2,
+    },
+  },
+  {
+    id: "stats-row",
+    type: SECTION_TYPES.STATS,
+    name: "Stats - Row",
+    icon: "bar-chart",
+    defaultProps: {
+      stats: [
+        {
+          id: "s1",
+          value: "100K+",
+          label: "Active Users",
+          description: "Worldwide",
+        },
+        {
+          id: "s2",
+          value: "99.9%",
+          label: "Uptime",
+          description: "Guaranteed",
+        },
+        {
+          id: "s3",
+          value: "4.9/5",
+          label: "Rating",
+          description: "Customer satisfaction",
+        },
+        {
+          id: "s4",
+          value: "24/7",
+          label: "Support",
+          description: "Always available",
+        },
+      ],
+    },
+  },
+  {
+    id: "cta-simple",
+    type: SECTION_TYPES.CTA,
+    name: "Call to Action - Simple",
+    icon: "mouse-pointer",
+    defaultProps: {
+      heading: "Ready to Get Started?",
+      subheading: "Join thousands of satisfied customers today",
+      primaryButton: {
+        text: "Start Free Trial",
+        link: "#",
+      },
+      secondaryButton: {
+        text: "Contact Sales",
+        link: "#",
+      },
+    },
+  },
+  {
+    id: "cta-features",
+    type: SECTION_TYPES.CTA,
+    name: "Call to Action - With Features",
+    icon: "zap",
+    defaultProps: {
+      heading: "Start Building Today",
+      subheading: "Everything you need to succeed online",
+      primaryButton: {
+        text: "Get Started Free",
+        link: "#",
+      },
+      secondaryButton: {
+        text: "Learn More",
+        link: "#",
+      },
+      features: [
+        "No credit card required",
+        "14-day free trial",
+        "Cancel anytime",
+      ],
+    },
+  },
+  {
+    id: "content-text",
+    type: SECTION_TYPES.CONTENT,
+    name: "Content - Text Only",
+    icon: "file-text",
+    defaultProps: {
+      heading: "Our Story",
+      content: "<p>We believe in building tools that empower everyone to create amazing websites. Our platform combines simplicity with powerful features.</p><p>Join thousands of creators who have already transformed their online presence with our platform.</p>",
+      alignment: "left",
+    },
+  },
+  {
+    id: "content-image",
+    type: SECTION_TYPES.CONTENT,
+    name: "Content - With Image",
+    icon: "image",
+    defaultProps: {
+      heading: "Built for Creators",
+      content: "<p>We believe that everyone deserves access to professional web tools. Our platform combines simplicity with power.</p><p>From portfolios to online stores, we've got you covered with everything you need to succeed online.</p>",
+      image: "",
+      imagePosition: "right",
+    },
+  },
+  {
+    id: "gallery-grid",
+    type: SECTION_TYPES.GALLERY,
+    name: "Gallery - Grid",
+    icon: "grid",
+    defaultProps: {
+      heading: "Our Work",
+      subheading: "Explore our latest projects",
+      items: [],
+      columns: 3,
+    },
+  },
+  {
+    id: "gallery-masonry",
+    type: SECTION_TYPES.GALLERY,
+    name: "Gallery - Masonry",
+    icon: "layout",
+    defaultProps: {
+      heading: "Portfolio",
+      subheading: "Showcasing creative excellence",
+      items: [
+        { id: "g1", image: "", title: "Project Alpha", category: "Design" },
+        { id: "g2", image: "", title: "Project Beta", category: "Development" },
+        { id: "g3", image: "", title: "Project Gamma", category: "Branding" },
+      ],
+      columns: 3,
+    },
+  },
+  {
+    id: "testimonials-grid",
+    type: SECTION_TYPES.TESTIMONIALS,
+    name: "Testimonials - Grid",
+    icon: "message-square",
+    defaultProps: {
+      heading: "What Our Customers Say",
+      subheading: "Real feedback from real people",
+      testimonials: [
+        {
+          id: "t1",
+          name: "Sarah Mitchell",
+          role: "Creative Director",
+          content: "This platform transformed how we build websites. The flexibility and ease of use are unmatched.",
+          avatar: "",
+          rating: 5,
+        },
+        {
+          id: "t2",
+          name: "James Chen",
+          role: "Startup Founder",
+          content: "Finally, a website builder that doesn't limit creativity. Highly recommended!",
+          avatar: "",
+          rating: 5,
+        },
+      ],
+    },
+  },
+  {
+    id: "testimonials-showcase",
+    type: SECTION_TYPES.TESTIMONIALS,
+    name: "Testimonials - Showcase",
+    icon: "star",
+    defaultProps: {
+      heading: "Success Stories",
+      subheading: "See what our clients have achieved",
+      testimonials: [
+        {
+          id: "t1",
+          name: "Emily Rodriguez",
+          role: "Marketing Manager",
+          content: "The ROI has been incredible. We launched in days and saw immediate results.",
+          avatar: "",
+          rating: 5,
+          metric: "300% increase",
+        },
+      ],
+    },
+  },
+  {
+    id: "pricing-table",
+    type: SECTION_TYPES.PRICING,
+    name: "Pricing - Table",
+    icon: "dollar-sign",
+    defaultProps: {
+      heading: "Choose Your Plan",
+      subheading: "Flexible pricing that grows with you",
+      plans: [
+        {
+          id: "p1",
+          name: "Starter",
+          price: "$12",
+          period: "month",
+          description: "Perfect for individuals",
+          features: [
+            "5 Projects",
+            "10GB Storage",
+            "Basic Support",
+          ],
+          ctaText: "Get Started",
+          ctaLink: "#",
+          highlighted: false,
+        },
+        {
+          id: "p2",
+          name: "Pro",
+          price: "$39",
+          period: "month",
+          description: "For professionals",
+          features: [
+            "Unlimited Projects",
+            "100GB Storage",
+            "Priority Support",
+            "Advanced Features",
+          ],
+          ctaText: "Start Trial",
+          ctaLink: "#",
+          highlighted: true,
+          badge: "Most Popular",
+        },
+        {
+          id: "p3",
+          name: "Enterprise",
+          price: "Custom",
+          period: "",
+          description: "For large teams",
+          features: [
+            "Everything in Pro",
+            "Unlimited Storage",
+            "Dedicated Support",
+            "Custom Features",
+          ],
+          ctaText: "Contact Us",
+          ctaLink: "#",
+          highlighted: false,
+        },
+      ],
+    },
+  },
+  {
+    id: "contact-form",
+    type: SECTION_TYPES.CONTACT,
+    name: "Contact Form",
+    icon: "mail",
+    defaultProps: {
+      heading: "Get In Touch",
+      subheading: "We'd love to hear from you",
+      fields: [
+        { id: "name", type: "text", label: "Name", required: true },
+        { id: "email", type: "email", label: "Email", required: true },
+        { id: "message", type: "textarea", label: "Message", required: true },
+      ],
+      submitText: "Send Message",
+    },
+  },
+  {
+    id: "team-grid",
+    type: SECTION_TYPES.TEAM,
+    name: "Team - Grid",
+    icon: "users",
+    defaultProps: {
+      heading: "Meet Our Team",
+      subheading: "The people behind the product",
+      members: [
+        {
+          id: "m1",
+          name: "Olivia Chen",
+          role: "Creative Director",
+          bio: "Leading design with passion and precision",
+          image: "",
+          socials: {},
+        },
+        {
+          id: "m2",
+          name: "Marcus Thompson",
+          role: "Head of Product",
+          bio: "Building tools that empower creators",
+          image: "",
+          socials: {},
+        },
+        {
+          id: "m3",
+          name: "Yuki Tanaka",
+          role: "Lead Engineer",
+          bio: "Crafting elegant technical solutions",
+          image: "",
+          socials: {},
+        },
+      ],
+      columns: 3,
+    },
+  },
+  {
+    id: "faq-accordion",
+    type: SECTION_TYPES.FAQ,
+    name: "FAQ - Accordion",
+    icon: "help-circle",
+    defaultProps: {
+      heading: "Frequently Asked Questions",
+      subheading: "Everything you need to know",
+      faqs: [
+        {
+          id: "q1",
+          question: "Do I need coding knowledge?",
+          answer: "Not at all! Our platform is designed for everyone, from complete beginners to experienced developers.",
+        },
+        {
+          id: "q2",
+          question: "Can I use my own domain?",
+          answer: "Yes! You can connect any domain you own or purchase a new one directly through our platform.",
+        },
+        {
+          id: "q3",
+          question: "What kind of websites can I build?",
+          answer: "Anything you can imagine! From portfolios and blogs to online stores and business sites.",
+        },
+      ],
+    },
+  },
+  {
+    id: "newsletter-simple",
+    type: SECTION_TYPES.NEWSLETTER,
+    name: "Newsletter",
+    icon: "mail",
+    defaultProps: {
+      heading: "Stay Updated",
+      subheading: "Get the latest news and updates delivered to your inbox",
+      placeholder: "Enter your email",
+      buttonText: "Subscribe",
+      benefits: [
+        "Weekly insights",
+        "Exclusive content",
+        "Early access",
+      ],
+    },
+  },
+];
+
+export const createNewSection = (libraryItem) => {
+  return {
+    id: `section-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    type: libraryItem.type,
+    templateId: libraryItem.id,
+    props: JSON.parse(JSON.stringify(libraryItem.defaultProps)),
+    style: {
+      padding: {
+        top: "4rem",
+        bottom: "4rem",
+      },
+      backgroundType: "color",
+      backgroundColor: "transparent",
+      backgroundGradient: "",
+      backgroundImage: "",
+      backgroundOverlay: 0,
+    },
+  };
+};
+
+SectionLibrary.jsx:
+import { SECTION_LIBRARY } from "../../../utils/sectionLibrary";
+import * as LucideIcons from "lucide-react";
+
+export default function SectionLibrary({ onAddSection }) {
+  const getIcon = (iconName) => {
+    const IconComponent = LucideIcons[
+      iconName.split("-").map((word, i) =>
+        i === 0 ? word : word.charAt(0).toUpperCase() + word.slice(1)
+      ).join("")
+    ];
+    return IconComponent || LucideIcons.Box;
+  };
+
+  const categories = [
+    { name: "Hero Sections", types: ["hero"], icon: "layout" },
+    { name: "Features & Benefits", types: ["features", "stats"], icon: "zap" },
+    { name: "Content & Media", types: ["content", "gallery"], icon: "image" },
+    { name: "Social Proof", types: ["testimonials", "team"], icon: "users" },
+    { name: "Conversion", types: ["cta", "pricing", "contact", "newsletter"], icon: "target" },
+    { name: "Information", types: ["faq", "process", "benefits", "logos"], icon: "info" },
+  ];
+
+  return (
+    <div className="h-full flex flex-col bg-white border-r border-gray-200">
+      <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+            <LucideIcons.Plus className="w-5 h-5 text-indigo-600" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-gray-900">
+              Add Sections
+            </h3>
+            <p className="text-xs text-gray-600">Click to add to canvas</p>
+          </div>
+        </div>
+      </div>
+      
+      <div className="flex-1 overflow-y-auto p-4 space-y-8">
+        {categories.map((category) => {
+          const items = SECTION_LIBRARY.filter((item) =>
+            category.types.includes(item.type)
+          );
+          if (items.length === 0) return null;
+
+          const CategoryIcon = getIcon(category.icon);
+
+          return (
+            <div key={category.name}>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-6 h-6 bg-gray-100 rounded-md flex items-center justify-center">
+                  <CategoryIcon className="w-4 h-4 text-gray-600" />
+                </div>
+                <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  {category.name}
+                </h4>
+              </div>
+              
+              <div className="space-y-3">
+                {items.map((item) => {
+                  const Icon = getIcon(item.icon);
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => onAddSection(item)}
+                      className="w-full group relative overflow-hidden"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-10 transition-opacity rounded-xl"></div>
+                      <div className="relative flex items-center gap-3 p-4 rounded-xl border-2 border-gray-200 hover:border-indigo-400 hover:shadow-lg transition-all bg-white">
+                        <div className="w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center group-hover:from-indigo-100 group-hover:to-purple-100 transition-all flex-shrink-0 shadow-sm">
+                          <Icon className="w-6 h-6 text-gray-600 group-hover:text-indigo-600 transition-colors" />
+                        </div>
+                        <div className="flex-1 text-left min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-indigo-600 transition-colors">
+                            {item.name}
+                          </p>
+                          <p className="text-xs text-gray-500 capitalize">
+                            {item.type} section
+                          </p>
+                        </div>
+                        <LucideIcons.Plus className="w-5 h-5 text-gray-400 group-hover:text-indigo-600 transition-colors flex-shrink-0" />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+
+        <div className="pt-6 pb-4">
+          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-100">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <LucideIcons.Lightbulb className="w-4 h-4 text-indigo-600" />
+              </div>
+              <div>
+                <h5 className="text-xs font-bold text-gray-900 mb-1">Pro Tip</h5>
+                <p className="text-xs text-gray-600 leading-relaxed">
+                  Start with a hero section, add features, then finish with a strong call-to-action for best results.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+PropertiesPanel.jsx:
+import { useState } from "react";
+import { useEditorStore } from "../../../store/store";
+import {
+  X,
+  Plus,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+  Image as ImageIcon,
+  Settings,
+} from "lucide-react";
+import { useWebsiteStore } from "../../../store/store";
+import FilePickerModal from "../modals/FilePickerModal";
+
+export default function PropertiesPanel() {
+  const { selectedWebsite } = useWebsiteStore();
+  const {
+    config,
+    selectedSection,
+    selectedHeader,
+    selectedFooter,
+    updateSection,
+    updateConfig,
+    selectSection,
+    selectHeader,
+    selectFooter,
+  } = useEditorStore();
+  const [expandedSections, setExpandedSections] = useState({});
+  const [showFilePicker, setShowFilePicker] = useState(false);
+  const [currentImageField, setCurrentImageField] = useState(null);
+
+  const toggleExpanded = (key) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
+  const openFilePicker = (fieldInfo) => {
+    setCurrentImageField(fieldInfo);
+    setShowFilePicker(true);
+  };
+
+  const handleFileSelect = (file) => {
+    if (!currentImageField) return;
+
+    const fileUrl = `${file.file_path}`;
+
+    if (currentImageField.type === "header") {
+      if (currentImageField.field === "logo") {
+        updateConfig("header.props.logo", fileUrl);
+      }
+    } else if (currentImageField.type === "footer") {
+      
+    } else if (currentImageField.sectionId) {
+      if (currentImageField.arrayPath) {
+        updateArrayItem(
+          currentImageField.arrayPath,
+          currentImageField.index,
+          currentImageField.field,
+          fileUrl,
+        );
+      } else if (currentImageField.isStyle) {
+        updateStyle(currentImageField.field, fileUrl);
+      } else {
+        updateProp(currentImageField.field, fileUrl);
+      }
+    }
+
+    setShowFilePicker(false);
+    setCurrentImageField(null);
+  };
+
+  if (!selectedSection && !selectedHeader && !selectedFooter) {
+    return (
+      <div className="h-full flex flex-col bg-white border-l border-gray-200">
+        <div className="p-4 border-b border-gray-200">
+          <h3 className="text-sm font-semibold text-gray-900 mb-1">
+            Theme Settings
+          </h3>
+          <p className="text-xs text-gray-500">Configure your theme</p>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="space-y-3">
+            <button
+              onClick={() => selectHeader()}
+              className="w-full p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all text-left"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+                  <Settings className="w-5 h-5 text-indigo-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">
+                    Header Settings
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Logo, navigation & style
+                  </p>
+                </div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => selectFooter()}
+              className="w-full p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all text-left"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+                  <Settings className="w-5 h-5 text-indigo-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">
+                    Footer Settings
+                  </p>
+                  <p className="text-xs text-gray-500">Columns & style</p>
+                </div>
+              </div>
+            </button>
+
+            <div className="pt-4 border-t border-gray-200">
+              <p className="text-xs text-gray-500 text-center">
+                Click on a section in the canvas to edit its properties
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (selectedHeader) {
+    return (
+      <div className="h-full flex flex-col bg-white border-l border-gray-200">
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-gray-900">
+              Header Settings
+            </h3>
+            <button
+              onClick={() => selectHeader(false)}
+              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <X className="w-4 h-4 text-gray-500" />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="mb-6">
+            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+              Style
+            </h4>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Height (px)
+                </label>
+                <input
+                  type="number"
+                  value={parseInt(config.header.style?.height) || 80}
+                  onChange={(e) =>
+                    updateConfig("header.style.height", `${e.target.value}px`)
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={config.header.style?.sticky || false}
+                    onChange={(e) =>
+                      updateConfig("header.style.sticky", e.target.checked)
+                    }
+                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="text-sm text-gray-700">Sticky Header</span>
+                </label>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Background Color
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="color"
+                    value={config.header.style?.backgroundColor || "#ffffff"}
+                    onChange={(e) =>
+                      updateConfig("header.style.backgroundColor", e.target.value)
+                    }
+                    className="w-16 h-10 rounded-lg border border-gray-300"
+                  />
+                  <input
+                    type="text"
+                    value={config.header.style?.backgroundColor || "#ffffff"}
+                    onChange={(e) =>
+                      updateConfig("header.style.backgroundColor", e.target.value)
+                    }
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-6 pb-6 border-b border-gray-200">
+            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+              Logo
+            </h4>
+            {config.header.props.logo ? (
+              <div className="relative border-2 border-gray-200 rounded-lg p-2 mb-2">
+                <img
+                  src={config.header.props.logo}
+                  alt="Logo"
+                  className="w-full h-20 object-contain"
+                />
+                <button
+                  onClick={() => updateConfig("header.props.logo", "")}
+                  className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded hover:bg-red-700"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ) : null}
+            <button
+              onClick={() => openFilePicker({ type: "header", field: "logo" })}
+              className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 text-sm text-gray-600"
+            >
+              <ImageIcon className="w-4 h-4" />
+              {config.header.props.logo ? "Change Logo" : "Upload Logo"}
+            </button>
+          </div>
+
+          <div className="mb-6 pb-6 border-b border-gray-200">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Navigation Menu ({config.header.props.menu?.length || 0})
+              </h4>
+              <button
+                onClick={() => {
+                  const menu = config.header.props.menu || [];
+                  updateConfig("header.props.menu", [
+                    ...menu,
+                    { id: Date.now().toString(), label: "New Link", url: "#section-" + Date.now() },
+                  ]);
+                }}
+                className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {(config.header.props.menu || []).map((item, idx) => (
+                <div key={item.id || idx} className="bg-gray-50 p-3 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-gray-600">
+                      Link {idx + 1}
+                    </span>
+                    <button
+                      onClick={() => {
+                        const menu = [...config.header.props.menu];
+                        menu.splice(idx, 1);
+                        updateConfig("header.props.menu", menu);
+                      }}
+                      className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Label"
+                    value={item.label}
+                    onChange={(e) => {
+                      const menu = [...config.header.props.menu];
+                      menu[idx] = { ...menu[idx], label: e.target.value };
+                      updateConfig("header.props.menu", menu);
+                    }}
+                    className="w-full px-3 py-1.5 border border-gray-300 rounded mb-2 text-sm"
+                  />
+                  <input
+                    type="text"
+                    placeholder="URL (use #section-id for internal links)"
+                    value={item.url}
+                    onChange={(e) => {
+                      const menu = [...config.header.props.menu];
+                      menu[idx] = { ...menu[idx], url: e.target.value };
+                      updateConfig("header.props.menu", menu);
+                    }}
+                    className="w-full px-3 py-1.5 border border-gray-300 rounded text-sm"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+              CTA Button
+            </h4>
+            <input
+              type="text"
+              placeholder="Button Text"
+              value={config.header.props.ctaButton?.text || ""}
+              onChange={(e) =>
+                updateConfig("header.props.ctaButton", {
+                  ...config.header.props.ctaButton,
+                  text: e.target.value,
+                })
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-2 text-sm"
+            />
+            <input
+              type="text"
+              placeholder="Button Link (use #section-id for internal links)"
+              value={config.header.props.ctaButton?.link || ""}
+              onChange={(e) =>
+                updateConfig("header.props.ctaButton", {
+                  ...config.header.props.ctaButton,
+                  link: e.target.value,
+                })
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            />
+          </div>
+        </div>
+
+        {selectedWebsite && (
+          <FilePickerModal
+            isOpen={showFilePicker}
+            onClose={() => {
+              setShowFilePicker(false);
+              setCurrentImageField(null);
+            }}
+            onSelectFile={handleFileSelect}
+            websiteId={selectedWebsite.id}
+            allowedTypes={["image"]}
+          />
+        )}
+      </div>
+    );
+  }
+
+  if (selectedFooter) {
+    return (
+      <div className="h-full flex flex-col bg-white border-l border-gray-200">
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-gray-900">
+              Footer Settings
+            </h3>
+            <button
+              onClick={() => selectFooter(false)}
+              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <X className="w-4 h-4 text-gray-500" />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="mb-6">
+            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+              Style
+            </h4>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Background Color
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="color"
+                    value={config.footer.style?.backgroundColor || "#111827"}
+                    onChange={(e) =>
+                      updateConfig("footer.style.backgroundColor", e.target.value)
+                    }
+                    className="w-16 h-10 rounded-lg border border-gray-300"
+                  />
+                  <input
+                    type="text"
+                    value={config.footer.style?.backgroundColor || "#111827"}
+                    onChange={(e) =>
+                      updateConfig("footer.style.backgroundColor", e.target.value)
+                    }
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Text Color
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="color"
+                    value={config.footer.style?.textColor || "#ffffff"}
+                    onChange={(e) =>
+                      updateConfig("footer.style.textColor", e.target.value)
+                    }
+                    className="w-16 h-10 rounded-lg border border-gray-300"
+                  />
+                  <input
+                    type="text"
+                    value={config.footer.style?.textColor || "#ffffff"}
+                    onChange={(e) =>
+                      updateConfig("footer.style.textColor", e.target.value)
+                    }
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Padding
+                </label>
+                <input
+                  type="text"
+                  value={config.footer.style?.padding || "3rem 0"}
+                  onChange={(e) =>
+                    updateConfig("footer.style.padding", e.target.value)
+                  }
+                  placeholder="3rem 0"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-6 pb-6 border-b border-gray-200">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Footer Columns ({config.footer.props.columns?.length || 0})
+              </h4>
+              <button
+                onClick={() => {
+                  const columns = config.footer.props.columns || [];
+                  updateConfig("footer.props.columns", [
+                    ...columns,
+                    {
+                      id: Date.now().toString(),
+                      title: "New Column",
+                      links: [],
+                    },
+                  ]);
+                }}
+                className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {(config.footer.props.columns || []).map((column, idx) => (
+                <div
+                  key={column.id || idx}
+                  className="bg-gray-50 p-3 rounded-lg"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <input
+                      type="text"
+                      placeholder="Column Title"
+                      value={column.title}
+                      onChange={(e) => {
+                        const columns = [...config.footer.props.columns];
+                        columns[idx] = {
+                          ...columns[idx],
+                          title: e.target.value,
+                        };
+                        updateConfig("footer.props.columns", columns);
+                      }}
+                      className="flex-1 px-3 py-1.5 border border-gray-300 rounded text-sm font-medium"
+                    />
+                    <button
+                      onClick={() => {
+                        const columns = [...config.footer.props.columns];
+                        columns.splice(idx, 1);
+                        updateConfig("footer.props.columns", columns);
+                      }}
+                      className="ml-2 p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-1 mt-2">
+                    {(column.links || []).map((link, linkIdx) => (
+                      <div key={linkIdx} className="flex gap-1">
+                        <input
+                          type="text"
+                          placeholder="Link text"
+                          value={link.text}
+                          onChange={(e) => {
+                            const columns = [...config.footer.props.columns];
+                            columns[idx].links[linkIdx] = {
+                              ...columns[idx].links[linkIdx],
+                              text: e.target.value,
+                            };
+                            updateConfig("footer.props.columns", columns);
+                          }}
+                          className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs"
+                        />
+                        <input
+                          type="text"
+                          placeholder="URL (use # for internal links)"
+                          value={link.url}
+                          onChange={(e) => {
+                            const columns = [...config.footer.props.columns];
+                            columns[idx].links[linkIdx] = {
+                              ...columns[idx].links[linkIdx],
+                              url: e.target.value,
+                            };
+                            updateConfig("footer.props.columns", columns);
+                          }}
+                          className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs"
+                        />
+                        <button
+                          onClick={() => {
+                            const columns = [...config.footer.props.columns];
+                            columns[idx].links.splice(linkIdx, 1);
+                            updateConfig("footer.props.columns", columns);
+                          }}
+                          className="p-1 text-red-600 hover:bg-red-50 rounded"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => {
+                        const columns = [...config.footer.props.columns];
+                        columns[idx].links = [
+                          ...(columns[idx].links || []),
+                          { text: "Link", url: "#" },
+                        ];
+                        updateConfig("footer.props.columns", columns);
+                      }}
+                      className="w-full px-2 py-1 border border-dashed border-gray-300 rounded text-xs text-gray-500 hover:border-indigo-500 hover:text-indigo-600"
+                    >
+                      + Add Link
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Copyright Text
+            </label>
+            <textarea
+              value={config.footer.props.copyright || ""}
+              onChange={(e) =>
+                updateConfig("footer.props.copyright", e.target.value)
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              rows="2"
+              placeholder="© 2024 Your Company. All rights reserved."
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const section = config.layout.sections.find((s) => s.id === selectedSection);
+  if (!section) {
+    return null;
+  }
+
+  const updateProp = (path, value) => {
+    const keys = path.split(".");
+    const newProps = { ...section.props };
+    let current = newProps;
+
+    for (let i = 0; i < keys.length - 1; i++) {
+      if (!current[keys[i]]) current[keys[i]] = {};
+      current = current[keys[i]];
+    }
+
+    current[keys[keys.length - 1]] = value;
+    updateSection(section.id, { props: newProps });
+  };
+
+  const updateStyle = (path, value) => {
+    const keys = path.split(".");
+    const newStyle = { ...section.style };
+    let current = newStyle;
+
+    for (let i = 0; i < keys.length - 1; i++) {
+      if (!current[keys[i]]) current[keys[i]] = {};
+      current = current[keys[i]];
+    }
+
+    current[keys[keys.length - 1]] = value;
+    updateSection(section.id, { style: newStyle });
+  };
+
+  const updateArrayItem = (arrayPath, index, itemPath, value) => {
+    const array = [...section.props[arrayPath]];
+    const keys = itemPath.split(".");
+    let current = array[index];
+
+    for (let i = 0; i < keys.length - 1; i++) {
+      current = current[keys[i]];
+    }
+
+    current[keys[keys.length - 1]] = value;
+    updateProp(arrayPath, array);
+  };
+
+  const addArrayItem = (arrayPath, template) => {
+    const array = section.props[arrayPath] || [];
+    updateProp(arrayPath, [
+      ...array,
+      { ...template, id: Date.now().toString() },
+    ]);
+  };
+
+  const removeArrayItem = (arrayPath, index) => {
+    const array = [...section.props[arrayPath]];
+    array.splice(index, 1);
+    updateProp(arrayPath, array);
+  };
+
+  const renderInput = (label, value, onChange, type = "text") => {
+    return (
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          {label}
+        </label>
+        {type === "textarea" ? (
+          <textarea
+            value={value || ""}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+            rows="4"
+          />
+        ) : type === "select" ? (
+          <select
+            value={value || ""}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+          >
+            {onChange.options?.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        ) : type === "number" ? (
+          <input
+            type="number"
+            value={value || ""}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+          />
+        ) : type === "image" ? (
+          <div>
+            {value && (
+              <div className="relative border-2 border-gray-200 rounded-lg p-2 mb-2">
+                <img
+                  src={value}
+                  alt="Preview"
+                  className="w-full h-32 object-cover rounded"
+                />
+                <button
+                  onClick={() => onChange("")}
+                  className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded hover:bg-red-700"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            )}
+            <button
+              onClick={() =>
+                openFilePicker({
+                  sectionId: section.id,
+                  field: label.toLowerCase().replace(/\s/g, ""),
+                })
+              }
+              className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 text-sm text-gray-600"
+            >
+              <ImageIcon className="w-4 h-4" />
+              {value ? "Change Image" : "Upload Image"}
+            </button>
+          </div>
+        ) : (
+          <input
+            type={type}
+            value={value || ""}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+          />
+        )}
+      </div>
+    );
+  };
+
+  const renderArrayEditor = (label, arrayPath, itemTemplate, renderItem) => {
+    const items = section.props[arrayPath] || [];
+    const isExpanded = expandedSections[arrayPath];
+
+    return (
+      <div className="mb-6 pb-6 border-b border-gray-200">
+        <div className="flex items-center justify-between mb-3">
+          <button
+            onClick={() => toggleExpanded(arrayPath)}
+            className="flex items-center gap-2 text-sm font-medium text-gray-900"
+          >
+            {isExpanded ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
+            {label} ({items.length})
+          </button>
+          <button
+            onClick={() => addArrayItem(arrayPath, itemTemplate)}
+            className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+            title="Add item"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+
+        {isExpanded && (
+          <div className="space-y-4 pl-4">
+            {items.map((item, idx) => (
+              <div
+                key={item.id || idx}
+                className="bg-gray-50 p-4 rounded-lg relative"
+              >
+                <button
+                  onClick={() => removeArrayItem(arrayPath, idx)}
+                  className="absolute top-2 right-2 p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  title="Remove"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+                {renderItem(item, idx, (path, value) =>
+                  updateArrayItem(arrayPath, idx, path, value),
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="h-full flex flex-col bg-white border-l border-gray-200">
+      <div className="p-4 border-b border-gray-200">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-semibold text-gray-900">
+            Section Properties
+          </h3>
+          <button
+            onClick={() => selectSection(null)}
+            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <X className="w-4 h-4 text-gray-500" />
+          </button>
+        </div>
+        <p className="text-xs text-gray-500 capitalize">
+          {section.type} Section
+        </p>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="mb-6">
+          <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+            Section ID
+          </h4>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={section.id}
+              readOnly
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm"
+            />
+            <button
+              onClick={() => navigator.clipboard.writeText(section.id)}
+              className="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm"
+            >
+              Copy ID
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mt-1">
+            Use this ID for navigation links (e.g., #{section.id})
+          </p>
+        </div>
+
+        <div className="mb-6 pb-6 border-b border-gray-200">
+          <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+            Section Style
+          </h4>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Background Type
+              </label>
+              <select
+                value={section.style?.backgroundType || "color"}
+                onChange={(e) => updateStyle("backgroundType", e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              >
+                <option value="color">Solid Color</option>
+                <option value="gradient">Gradient</option>
+                <option value="image">Image</option>
+              </select>
+            </div>
+
+            {section.style?.backgroundType === "color" && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Background Color
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="color"
+                    value={section.style?.backgroundColor || "#ffffff"}
+                    onChange={(e) => updateStyle("backgroundColor", e.target.value)}
+                    className="w-16 h-10 rounded-lg border border-gray-300"
+                  />
+                  <input
+                    type="text"
+                    value={section.style?.backgroundColor || "#ffffff"}
+                    onChange={(e) => updateStyle("backgroundColor", e.target.value)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  />
+                </div>
+              </div>
+            )}
+
+            {section.style?.backgroundType === "gradient" && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Gradient
+                </label>
+                <input
+                  type="text"
+                  value={section.style?.backgroundGradient || "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"}
+                  onChange={(e) => updateStyle("backgroundGradient", e.target.value)}
+                  placeholder="linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+            )}
+
+            {section.style?.backgroundType === "image" && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Background Image
+                </label>
+                {section.style?.backgroundImage && (
+                  <div className="relative border-2 border-gray-200 rounded-lg p-2 mb-2">
+                    <img
+                      src={section.style.backgroundImage}
+                      alt="Background"
+                      className="w-full h-32 object-cover rounded"
+                    />
+                    <button
+                      onClick={() => updateStyle("backgroundImage", "")}
+                      className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded hover:bg-red-700"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+                <button
+                  onClick={() =>
+                    openFilePicker({
+                      sectionId: section.id,
+                      field: "backgroundImage",
+                      isStyle: true,
+                    })
+                  }
+                  className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 text-sm text-gray-600"
+                >
+                  <ImageIcon className="w-4 h-4" />
+                  {section.style?.backgroundImage ? "Change Image" : "Upload Image"}
+                </button>
+                
+                {section.style?.backgroundImage && (
+                  <div className="mt-2 space-y-2">
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">
+                        Image Overlay Opacity
+                      </label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={(section.style?.backgroundOverlay || 0) * 100}
+                        onChange={(e) => updateStyle("backgroundOverlay", e.target.value / 100)}
+                        className="w-full"
+                      />
+                      <span className="text-xs text-gray-500">{Math.round((section.style?.backgroundOverlay || 0) * 100)}%</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Padding Top (rem)
+              </label>
+              <input
+                type="number"
+                value={parseFloat(section.style?.padding?.top) || 4}
+                onChange={(e) => updateStyle("padding.top", `${e.target.value}rem`)}
+                step="0.5"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Padding Bottom (rem)
+              </label>
+              <input
+                type="number"
+                value={parseFloat(section.style?.padding?.bottom) || 4}
+                onChange={(e) => updateStyle("padding.bottom", `${e.target.value}rem`)}
+                step="0.5"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-6 pb-6 border-b border-gray-200">
+          <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+            Content
+          </h4>
+          
+          {renderInput("Heading", section.props.heading, (v) =>
+            updateProp("heading", v),
+          )}
+
+          {section.props.subheading !== undefined &&
+            renderInput(
+              "Subheading",
+              section.props.subheading,
+              (v) => updateProp("subheading", v),
+              "textarea",
+            )}
+
+          {section.props.content !== undefined &&
+            renderInput(
+              "Content",
+              section.props.content,
+              (v) => updateProp("content", v),
+              "textarea",
+            )}
+
+          {section.props.image !== undefined &&
+            renderInput(
+              "Image",
+              section.props.image,
+              (v) => updateProp("image", v),
+              "image",
+            )}
+
+          {section.props.imagePosition !== undefined &&
+            renderInput(
+              "Image Position",
+              section.props.imagePosition,
+              Object.assign((v) => updateProp("imagePosition", v), {
+                options: [
+                  { value: "left", label: "Left" },
+                  { value: "right", label: "Right" },
+                ],
+              }),
+              "select",
+            )}
+
+          {section.props.ctaText !== undefined &&
+            renderInput("CTA Text", section.props.ctaText, (v) =>
+              updateProp("ctaText", v),
+            )}
+
+          {section.props.ctaLink !== undefined &&
+            renderInput("CTA Link", section.props.ctaLink, (v) =>
+              updateProp("ctaLink", v),
+            )}
+
+          {section.props.alignment !== undefined &&
+            renderInput(
+              "Alignment",
+              section.props.alignment,
+              Object.assign((v) => updateProp("alignment", v), {
+                options: [
+                  { value: "left", label: "Left" },
+                  { value: "center", label: "Center" },
+                  { value: "right", label: "Right" },
+                ],
+              }),
+              "select",
+            )}
+
+          {section.props.columns !== undefined &&
+            renderInput(
+              "Columns",
+              section.props.columns,
+              (v) => updateProp("columns", parseInt(v)),
+              "number",
+            )}
+        </div>
+
+        {section.props.features &&
+          renderArrayEditor(
+            "Features",
+            "features",
+            {
+              icon: "zap",
+              title: "New Feature",
+              description: "Feature description",
+            },
+            (item, idx, update) => (
+              <>
+                {renderInput("Icon", item.icon, (v) => update("icon", v))}
+                {renderInput("Title", item.title, (v) => update("title", v))}
+                {renderInput(
+                  "Description",
+                  item.description,
+                  (v) => update("description", v),
+                  "textarea",
+                )}
+              </>
+            ),
+          )}
+
+        {section.props.testimonials &&
+          renderArrayEditor(
+            "Testimonials",
+            "testimonials",
+            {
+              name: "Name",
+              role: "Role",
+              content: "Testimonial content",
+              avatar: "",
+              rating: 5,
+            },
+            (item, idx, update) => (
+              <>
+                {renderInput("Name", item.name, (v) => update("name", v))}
+                {renderInput("Role", item.role, (v) => update("role", v))}
+                {renderInput(
+                  "Content",
+                  item.content,
+                  (v) => update("content", v),
+                  "textarea",
+                )}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Avatar
+                  </label>
+                  {item.avatar && (
+                    <div className="relative border-2 border-gray-200 rounded-lg p-2 mb-2">
+                      <img
+                        src={item.avatar}
+                        alt="Preview"
+                        className="w-full h-32 object-cover rounded"
+                      />
+                      <button
+                        onClick={() => update("avatar", "")}
+                        className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded hover:bg-red-700"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+                  <button
+                    onClick={() =>
+                      openFilePicker({
+                        sectionId: section.id,
+                        arrayPath: "testimonials",
+                        index: idx,
+                        field: "avatar",
+                      })
+                    }
+                    className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 text-sm text-gray-600"
+                  >
+                    <ImageIcon className="w-4 h-4" />
+                    {item.avatar ? "Change Avatar" : "Upload Avatar"}
+                  </button>
+                </div>
+                {renderInput(
+                  "Rating",
+                  item.rating,
+                  (v) => update("rating", parseInt(v)),
+                  "number",
+                )}
+              </>
+            ),
+          )}
+
+        {section.props.plans &&
+          renderArrayEditor(
+            "Pricing Plans",
+            "plans",
+            {
+              name: "Plan Name",
+              price: "$0",
+              period: "month",
+              features: [],
+              ctaText: "Get Started",
+              ctaLink: "#",
+              highlighted: false,
+            },
+            (item, idx, update) => (
+              <>
+                {renderInput("Name", item.name, (v) => update("name", v))}
+                {renderInput("Price", item.price, (v) => update("price", v))}
+                {renderInput("CTA Text", item.ctaText, (v) =>
+                  update("ctaText", v),
+                )}
+              </>
+            ),
+          )}
+
+        {section.props.fields &&
+          renderArrayEditor(
+            "Form Fields",
+            "fields",
+            { type: "text", label: "Field Label", required: false },
+            (item, idx, update) => (
+              <>
+                {renderInput("Label", item.label, (v) => update("label", v))}
+                {renderInput(
+                  "Type",
+                  item.type,
+                  Object.assign((v) => update("type", v), {
+                    options: [
+                      { value: "text", label: "Text" },
+                      { value: "email", label: "Email" },
+                      { value: "tel", label: "Phone" },
+                      { value: "textarea", label: "Textarea" },
+                    ],
+                  }),
+                  "select",
+                )}
+              </>
+            ),
+          )}
+
+        {section.props.questions &&
+          renderArrayEditor(
+            "Questions",
+            "questions",
+            { question: "Question?", answer: "Answer" },
+            (item, idx, update) => (
+              <>
+                {renderInput("Question", item.question, (v) =>
+                  update("question", v),
+                )}
+                {renderInput(
+                  "Answer",
+                  item.answer,
+                  (v) => update("answer", v),
+                  "textarea",
+                )}
+              </>
+            ),
+          )}
+
+        {section.props.members &&
+          renderArrayEditor(
+            "Team Members",
+            "members",
+            { name: "Name", role: "Role", bio: "Short bio", image: "" },
+            (item, idx, update) => (
+              <>
+                {renderInput("Name", item.name, (v) => update("name", v))}
+                {renderInput("Role", item.role, (v) => update("role", v))}
+                {renderInput(
+                  "Bio",
+                  item.bio,
+                  (v) => update("bio", v),
+                  "textarea",
+                )}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Image
+                  </label>
+                  {item.image && (
+                    <div className="relative border-2 border-gray-200 rounded-lg p-2 mb-2">
+                      <img
+                        src={item.image}
+                        alt="Preview"
+                        className="w-full h-32 object-cover rounded"
+                      />
+                      <button
+                        onClick={() => update("image", "")}
+                        className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded hover:bg-red-700"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+                  <button
+                    onClick={() =>
+                      openFilePicker({
+                        sectionId: section.id,
+                        arrayPath: "members",
+                        index: idx,
+                        field: "image",
+                      })
+                    }
+                    className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 text-sm text-gray-600"
+                  >
+                    <ImageIcon className="w-4 h-4" />
+                    {item.image ? "Change Image" : "Upload Image"}
+                  </button>
+                </div>
+              </>
+            ),
+          )}
+      </div>
+
+      {selectedWebsite && (
+        <FilePickerModal
+          isOpen={showFilePicker}
+          onClose={() => {
+            setShowFilePicker(false);
+            setCurrentImageField(null);
+          }}
+          onSelectFile={(file) => {
+            const fileUrl = file.file_path;
+            
+            if (currentImageField.isStyle) {
+              updateStyle(currentImageField.field, fileUrl);
+            } else if (currentImageField.arrayPath) {
+              updateArrayItem(
+                currentImageField.arrayPath,
+                currentImageField.index,
+                currentImageField.field,
+                fileUrl,
+              );
+            } else {
+              updateProp(currentImageField.field, fileUrl);
+            }
+            
+            setShowFilePicker(false);
+            setCurrentImageField(null);
+          }}
+          websiteId={selectedWebsite.id}
+          allowedTypes={["image"]}
+        />
+      )}
+    </div>
+  );
+}
+
+
+
+prompt:
+a lot of things are missing:
+1. in some section(etc stats and more), i can;t change the content in PropertiesPanel
+2. the gallery section i can't add picture into it, it is just a blank Box
+3. i want to be able to add carosel in some section like gallery, hero etc and more that needs it
+4. if i change tenmplate   the save button is still showing disable instead of turning active
+5. some sections are missing: like process, logos,benefits,case-studies, trust
+give me full page of the code change if u didn;t change any code in a page don;t give me 
+
+without comments

@@ -1,7 +1,21 @@
 import { SECTION_TYPES } from "../../../utils/sectionLibrary";
 import * as LucideIcons from "lucide-react";
+import { useState, useEffect } from "react";
 
 export default function SectionRenderer({ section, themeColors, selectedTemplate }) {
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const carousel = section.props.carousel;
+
+  useEffect(() => {
+    let interval;
+    if (carousel?.enabled && carousel?.autoplay && carousel?.slides?.length > 0) {
+      interval = setInterval(() => {
+        setCurrentSlide((prev) => (prev + 1) % carousel.slides.length);
+      }, carousel.interval || 5000);
+    }
+    return () => clearInterval(interval);
+  }, [carousel]);
+
   const getIcon = (iconName) => {
     if (!iconName) return null;
     const IconComponent = LucideIcons[
@@ -54,11 +68,84 @@ export default function SectionRenderer({ section, themeColors, selectedTemplate
     return null;
   };
 
+  const renderCarouselIndicators = (slides) => {
+    if (!slides || slides.length <= 1) return null;
+    return (
+      <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-2 z-20">
+        {slides.map((_, idx) => (
+          <button
+            key={idx}
+            onClick={() => setCurrentSlide(idx)}
+            className={`w-2.5 h-2.5 rounded-full transition-all ${
+              idx === currentSlide 
+                ? "bg-white w-8" 
+                : "bg-white/50 hover:bg-white/80"
+            }`}
+          />
+        ))}
+      </div>
+    );
+  };
+
+  const renderCarouselArrows = (slides) => {
+    if (!slides || slides.length <= 1) return null;
+    return (
+      <>
+        <button
+          onClick={() => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length)}
+          className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-all"
+        >
+          <LucideIcons.ChevronLeft className="w-6 h-6" />
+        </button>
+        <button
+          onClick={() => setCurrentSlide((prev) => (prev + 1) % slides.length)}
+          className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-all"
+        >
+          <LucideIcons.ChevronRight className="w-6 h-6" />
+        </button>
+      </>
+    );
+  };
+
   const renderHero = () => {
-    const { heading, subheading, ctaText, ctaLink, secondaryCtaText, secondaryCtaLink, image, alignment = "center" } = section.props;
+    const { heading, subheading, ctaText, ctaLink, secondaryCtaText, secondaryCtaLink, image, alignment = "center", carousel } = section.props;
     const overlayStyle = getOverlayStyle();
     const hasImage = image && image.trim() !== "";
     const primaryColor = themeColors?.primary || "#6366f1";
+
+    if (carousel?.enabled && carousel?.slides?.length > 0) {
+      const slide = carousel.slides[currentSlide] || {};
+      return (
+        <div style={getSectionStyle()}>
+          {overlayStyle && <div style={overlayStyle}></div>}
+          <div className="relative min-h-[600px] flex items-center">
+            {slide.image && (
+              <div className="absolute inset-0">
+                <img src={slide.image} alt="" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/50"></div>
+              </div>
+            )}
+            {renderCarouselIndicators(carousel.slides)}
+            {renderCarouselArrows(carousel.slides)}
+            <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-8 leading-tight">
+                {slide.heading || heading || "Hero Heading"}
+              </h1>
+              <p className="text-xl md:text-2xl mb-10 max-w-3xl mx-auto leading-relaxed text-white/90">
+                {slide.subheading || subheading || "Hero subheading goes here"}
+              </p>
+              <div className="flex flex-wrap gap-4 justify-center">
+                {slide.ctaText && (
+                  <a href={slide.ctaLink || "#"} className="inline-block px-10 py-4 bg-white text-gray-900 rounded-xl font-semibold text-lg hover:bg-gray-100 transition-all shadow-lg">
+                    {slide.ctaText}
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
 
     if (selectedTemplate === "bold") {
       return (
@@ -600,9 +687,50 @@ export default function SectionRenderer({ section, themeColors, selectedTemplate
   };
 
   const renderGallery = () => {
-    const { heading, subheading, images = [], items = [], columns = 3 } = section.props;
+    const { heading, subheading, items = [], columns = 3, carousel } = section.props;
     const overlayStyle = getOverlayStyle();
-    const displayItems = items.length > 0 ? items : images;
+    const displayItems = items;
+
+    if (carousel?.enabled) {
+      return (
+        <div style={getSectionStyle()}>
+          {overlayStyle && <div style={overlayStyle}></div>}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4" style={{ color: section.style?.backgroundType === "image" ? "#ffffff" : undefined }}>
+                {heading || "Gallery"}
+              </h2>
+              {subheading && (
+                <p className="text-lg text-gray-600 max-w-2xl mx-auto" style={{ color: section.style?.backgroundType === "image" ? "#e5e7eb" : undefined }}>
+                  {subheading}
+                </p>
+              )}
+            </div>
+            <div className="relative">
+              <div className={`grid grid-cols-1 ${columns >= 2 ? "sm:grid-cols-2" : ""} ${columns >= 3 ? "lg:grid-cols-3" : ""} ${columns >= 4 ? "xl:grid-cols-4" : ""} gap-8`}>
+                {displayItems.slice(0, columns).map((item, idx) => (
+                  <div key={item.id || idx} className="group relative aspect-square bg-gray-200 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-2">
+                    {item.image ? (
+                      <img src={item.image} alt={item.title || `Gallery ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300"></div>
+                    )}
+                    {item.title && (
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-6">
+                        <div className="text-white">
+                          <h3 className="text-xl font-bold mb-1">{item.title}</h3>
+                          {item.category && <p className="text-sm text-gray-300">{item.category}</p>}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div style={getSectionStyle()}>
@@ -623,8 +751,6 @@ export default function SectionRenderer({ section, themeColors, selectedTemplate
               <div key={item.id || idx} className="group relative aspect-square bg-gray-200 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-2">
                 {item.image ? (
                   <img src={item.image} alt={item.title || `Gallery ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                ) : typeof item === "string" ? (
-                  <img src={item} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300"></div>
                 )}
@@ -647,9 +773,50 @@ export default function SectionRenderer({ section, themeColors, selectedTemplate
   };
 
   const renderTestimonials = () => {
-    const { heading, subheading, testimonials = [] } = section.props;
+    const { heading, subheading, testimonials = [], carousel } = section.props;
     const overlayStyle = getOverlayStyle();
     const primaryColor = themeColors?.primary || "#6366f1";
+
+    if (carousel?.enabled) {
+      const slide = testimonials[currentSlide] || {};
+      return (
+        <div style={getSectionStyle()}>
+          {overlayStyle && <div style={overlayStyle}></div>}
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6">
+                {heading || "Testimonials"}
+              </h2>
+              {subheading && (
+                <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                  {subheading}
+                </p>
+              )}
+            </div>
+            <div className="relative bg-white rounded-3xl p-12 shadow-2xl">
+              {renderCarouselIndicators(testimonials)}
+              <div className="text-center">
+                <div className="flex justify-center mb-6">
+                  {[...Array(slide.rating || 5)].map((_, i) => (
+                    <LucideIcons.Star key={i} className="w-6 h-6 fill-current text-yellow-400" />
+                  ))}
+                </div>
+                <p className="text-xl md:text-2xl text-gray-700 mb-8 italic">"{slide.content}"</p>
+                <div className="flex items-center justify-center">
+                  <div className="w-16 h-16 bg-gradient-to-br from-indigo-400 to-purple-400 rounded-full mr-4 overflow-hidden">
+                    {slide.avatar && <img src={slide.avatar} alt={slide.name} className="w-full h-full object-cover" />}
+                  </div>
+                  <div className="text-left">
+                    <p className="font-bold text-gray-900 text-lg">{slide.name}</p>
+                    <p className="text-gray-600">{slide.role}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
 
     if (selectedTemplate === "modern" || selectedTemplate === "bold") {
       return (
@@ -932,13 +1099,27 @@ export default function SectionRenderer({ section, themeColors, selectedTemplate
   };
 
   const renderStats = () => {
-    const { stats = [] } = section.props;
+    const { heading, subheading, stats = [] } = section.props;
     const overlayStyle = getOverlayStyle();
 
     return (
       <div style={getSectionStyle()}>
         {overlayStyle && <div style={overlayStyle}></div>}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          {(heading || subheading) && (
+            <div className="text-center mb-16">
+              {heading && (
+                <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4" style={{ color: section.style?.backgroundType === "image" ? "#ffffff" : undefined }}>
+                  {heading}
+                </h2>
+              )}
+              {subheading && (
+                <p className="text-lg text-gray-600 max-w-2xl mx-auto" style={{ color: section.style?.backgroundType === "image" ? "#e5e7eb" : undefined }}>
+                  {subheading}
+                </p>
+              )}
+            </div>
+          )}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
             {stats.map((stat) => (
               <div key={stat.id} className="text-center group">
@@ -999,6 +1180,341 @@ export default function SectionRenderer({ section, themeColors, selectedTemplate
     );
   };
 
+  const renderProcess = () => {
+    const { heading, subheading, steps = [] } = section.props;
+    const overlayStyle = getOverlayStyle();
+    const primaryColor = themeColors?.primary || "#6366f1";
+
+    return (
+      <div style={getSectionStyle()}>
+        {overlayStyle && <div style={overlayStyle}></div>}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="text-center mb-20">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6" style={{ color: section.style?.backgroundType === "image" ? "#ffffff" : undefined }}>
+              {heading || "Our Process"}
+            </h2>
+            {subheading && (
+              <p className="text-lg text-gray-600 max-w-2xl mx-auto" style={{ color: section.style?.backgroundType === "image" ? "#e5e7eb" : undefined }}>
+                {subheading}
+              </p>
+            )}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {steps.map((step, idx) => {
+              const Icon = getIcon(step.icon);
+              return (
+                <div key={step.id} className="relative group">
+                  <div className="text-5xl font-black mb-4" style={{ color: primaryColor, opacity: 0.2 }}>
+                    {step.number || String(idx + 1).padStart(2, '0')}
+                  </div>
+                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6" style={{ backgroundColor: primaryColor }}>
+                    {Icon && <Icon className="w-8 h-8 text-white" />}
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-3">
+                    {step.title}
+                  </h3>
+                  <p className="text-gray-600 leading-relaxed">
+                    {step.description}
+                  </p>
+                  {step.duration && (
+                    <p className="text-sm font-medium mt-4" style={{ color: primaryColor }}>
+                      ⏱ {step.duration}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderBenefits = () => {
+    const { heading, subheading, benefits = [] } = section.props;
+    const overlayStyle = getOverlayStyle();
+    const primaryColor = themeColors?.primary || "#6366f1";
+
+    return (
+      <div style={getSectionStyle()}>
+        {overlayStyle && <div style={overlayStyle}></div>}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="text-center mb-20">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6" style={{ color: section.style?.backgroundType === "image" ? "#ffffff" : undefined }}>
+              {heading || "Why Choose Us"}
+            </h2>
+            {subheading && (
+              <p className="text-lg text-gray-600 max-w-2xl mx-auto" style={{ color: section.style?.backgroundType === "image" ? "#e5e7eb" : undefined }}>
+                {subheading}
+              </p>
+            )}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {benefits.map((benefit) => {
+              const Icon = getIcon(benefit.icon);
+              return (
+                <div key={benefit.id} className="flex gap-6 p-8 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all">
+                  <div className="flex-shrink-0">
+                    <div className="w-16 h-16 rounded-xl flex items-center justify-center" style={{ backgroundColor: primaryColor }}>
+                      {Icon && <Icon className="w-8 h-8 text-white" />}
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-xl font-bold text-gray-900">
+                        {benefit.title}
+                      </h3>
+                      {benefit.metric && (
+                        <span className="text-2xl font-black" style={{ color: primaryColor }}>
+                          {benefit.metric}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-gray-600 leading-relaxed">
+                      {benefit.description}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderLogos = () => {
+    const { heading, subheading, logos = [], columns = 4, carousel } = section.props;
+    const overlayStyle = getOverlayStyle();
+
+    if (carousel?.enabled) {
+      return (
+        <div style={getSectionStyle()}>
+          {overlayStyle && <div style={overlayStyle}></div>}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6" style={{ color: section.style?.backgroundType === "image" ? "#ffffff" : undefined }}>
+                {heading || "Trusted by Industry Leaders"}
+              </h2>
+              {subheading && (
+                <p className="text-lg text-gray-600" style={{ color: section.style?.backgroundType === "image" ? "#e5e7eb" : undefined }}>
+                  {subheading}
+                </p>
+              )}
+            </div>
+            <div className="relative overflow-hidden">
+              <div className="flex animate-scroll whitespace-nowrap gap-12">
+                {[...logos, ...logos].map((logo, idx) => (
+                  <div key={`${logo.id}-${idx}`} className="inline-flex items-center justify-center min-w-[160px] h-24 px-6">
+                    {logo.image ? (
+                      <img src={logo.image} alt={logo.name} className="max-h-12 w-auto object-contain grayscale hover:grayscale-0 transition-all" />
+                    ) : (
+                      <div className="w-32 h-16 bg-gray-200 rounded-lg"></div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div style={getSectionStyle()}>
+        {overlayStyle && <div style={overlayStyle}></div>}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6" style={{ color: section.style?.backgroundType === "image" ? "#ffffff" : undefined }}>
+              {heading || "Trusted by Industry Leaders"}
+            </h2>
+            {subheading && (
+              <p className="text-lg text-gray-600" style={{ color: section.style?.backgroundType === "image" ? "#e5e7eb" : undefined }}>
+                {subheading}
+              </p>
+            )}
+          </div>
+          <div className={`grid grid-cols-2 md:grid-cols-${columns} gap-12 items-center`}>
+            {logos.map((logo) => (
+              <div key={logo.id} className="flex justify-center">
+                {logo.image ? (
+                  <img src={logo.image} alt={logo.name} className="max-h-16 w-auto object-contain grayscale hover:grayscale-0 transition-all" />
+                ) : (
+                  <div className="w-32 h-16 bg-gray-200 rounded-lg"></div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderCaseStudies = () => {
+    const { heading, subheading, studies = [] } = section.props;
+    const overlayStyle = getOverlayStyle();
+    const primaryColor = themeColors?.primary || "#6366f1";
+
+    return (
+      <div style={getSectionStyle()}>
+        {overlayStyle && <div style={overlayStyle}></div>}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="text-center mb-20">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6" style={{ color: section.style?.backgroundType === "image" ? "#ffffff" : undefined }}>
+              {heading || "Success Stories"}
+            </h2>
+            {subheading && (
+              <p className="text-lg text-gray-600 max-w-2xl mx-auto" style={{ color: section.style?.backgroundType === "image" ? "#e5e7eb" : undefined }}>
+                {subheading}
+              </p>
+            )}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            {studies.map((study) => (
+              <div key={study.id} className="group bg-white rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-2">
+                <div className="relative h-64 overflow-hidden">
+                  {study.image ? (
+                    <img src={study.image} alt={study.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300"></div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-8">
+                    <a href={study.link} className="text-white font-semibold flex items-center gap-2 hover:underline">
+                      View Case Study
+                      <LucideIcons.ArrowRight className="w-5 h-5" />
+                    </a>
+                  </div>
+                </div>
+                <div className="p-8">
+                  <div className="flex items-center gap-3 mb-4">
+                    <h3 className="text-2xl font-bold text-gray-900">{study.title}</h3>
+                    <span className="px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-600">
+                      {study.client}
+                    </span>
+                  </div>
+                  <p className="text-gray-600 mb-6 leading-relaxed">
+                    {study.description}
+                  </p>
+                  {study.results && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-semibold text-gray-900">Key Results:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {study.results.map((result, idx) => (
+                          <span key={idx} className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                            {result}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {study.metrics && (
+                    <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-gray-200">
+                      {study.metrics.map((metric, idx) => (
+                        <div key={idx} className="text-center">
+                          <div className="text-2xl font-bold" style={{ color: primaryColor }}>
+                            {metric.value}
+                          </div>
+                          <div className="text-xs text-gray-600">
+                            {metric.label}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderTrust = () => {
+    const { heading, subheading, badges = [], testimonials = [], awards = [] } = section.props;
+    const overlayStyle = getOverlayStyle();
+    const primaryColor = themeColors?.primary || "#6366f1";
+
+    return (
+      <div style={getSectionStyle()}>
+        {overlayStyle && <div style={overlayStyle}></div>}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="text-center mb-20">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6" style={{ color: section.style?.backgroundType === "image" ? "#ffffff" : undefined }}>
+              {heading || "Trusted & Secure"}
+            </h2>
+            {subheading && (
+              <p className="text-lg text-gray-600 max-w-2xl mx-auto" style={{ color: section.style?.backgroundType === "image" ? "#e5e7eb" : undefined }}>
+                {subheading}
+              </p>
+            )}
+          </div>
+
+          {badges.length > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-16">
+              {badges.map((badge) => {
+                const Icon = getIcon(badge.icon);
+                return (
+                  <div key={badge.id} className="text-center">
+                    <div className="w-20 h-20 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                      {Icon && <Icon className="w-10 h-10" style={{ color: primaryColor }} />}
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-900 mb-2">
+                      {badge.title}
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      {badge.description}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {testimonials.length > 0 && (
+            <div className="mb-16">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {testimonials.map((test) => (
+                  <div key={test.id} className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100">
+                    <div className="flex items-center gap-1 mb-4">
+                      {[...Array(test.rating || 5)].map((_, i) => (
+                        <LucideIcons.Star key={i} className="w-5 h-5 fill-current text-yellow-400" />
+                      ))}
+                    </div>
+                    <p className="text-gray-700 mb-6 text-lg italic">"{test.quote}"</p>
+                    <div className="flex items-center">
+                      <div className="w-12 h-12 bg-gray-200 rounded-full mr-4 overflow-hidden">
+                        {test.image && <img src={test.image} alt={test.author} className="w-full h-full object-cover" />}
+                      </div>
+                      <div>
+                        <p className="font-bold text-gray-900">{test.author}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {awards.length > 0 && (
+            <div className="text-center">
+              <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-6">
+                Recognized by
+              </h4>
+              <div className="flex flex-wrap justify-center gap-4">
+                {awards.map((award, idx) => (
+                  <span key={idx} className="px-6 py-3 bg-white border-2 border-gray-200 rounded-full text-gray-700 font-medium">
+                    🏆 {award}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   switch (section.type) {
     case SECTION_TYPES.HERO:
       return renderHero();
@@ -1020,10 +1536,20 @@ export default function SectionRenderer({ section, themeColors, selectedTemplate
       return renderTeam();
     case SECTION_TYPES.FAQ:
       return renderFAQ();
-    case "stats":
+    case SECTION_TYPES.STATS:
       return renderStats();
-    case "newsletter":
+    case SECTION_TYPES.NEWSLETTER:
       return renderNewsletter();
+    case SECTION_TYPES.PROCESS:
+      return renderProcess();
+    case SECTION_TYPES.BENEFITS:
+      return renderBenefits();
+    case SECTION_TYPES.LOGOS:
+      return renderLogos();
+    case SECTION_TYPES.CASE_STUDIES:
+      return renderCaseStudies();
+    case SECTION_TYPES.TRUST:
+      return renderTrust();
     default:
       return (
         <div className="py-16 text-center text-gray-500">
