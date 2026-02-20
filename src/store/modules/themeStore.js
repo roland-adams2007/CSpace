@@ -125,6 +125,187 @@ export const useThemeStore = create((set, get) => ({
 
   setCurrentTheme: (theme) => set({ currentTheme: theme }),
 
+  // useThemeEditor: () => {
+  //   const { themeSlug } = useParams();
+  //   const navigate = useNavigate();
+  //   const { getTheme, updateTheme, loading } = get();
+  //   const {
+  //     config,
+  //     setConfig,
+  //     addSection,
+  //     undo,
+  //     redo,
+  //     canUndo,
+  //     canRedo,
+  //     isDirty,
+  //     resetDirty,
+  //   } = useEditorStore();
+
+  //   const [theme, setTheme] = useState(null);
+  //   const [saving, setSaving] = useState(false);
+  //   const [showSettings, setShowSettings] = useState(false);
+  //   const [selectedTemplate, setSelectedTemplate] = useState("classic");
+  //   const [showTemplateModal, setShowTemplateModal] = useState(false);
+  //   const [isLoading, setIsLoading] = useState(true);
+
+  //   useEffect(() => {
+  //     loadTheme();
+  //   }, [themeSlug]);
+
+  //   const loadTheme = async () => {
+  //     try {
+  //       const themeData = await getTheme(themeSlug);
+  //       setTheme(themeData);
+
+  //       let configData = themeData.config_json;
+  //       if (typeof configData === "string") {
+  //         configData = JSON.parse(configData);
+  //       }
+
+  //       setConfig(configData);
+
+  //       if (configData.template) {
+  //         setSelectedTemplate(configData.template);
+  //       }
+  //     } catch (error) {
+  //       console.error("Failed to load theme:", error);
+  //       navigate("/website-builder");
+  //     } finally {
+  //       setIsLoading(false);
+  //     }
+  //   };
+
+  //   const handleSave = async () => {
+  //     setSaving(true);
+  //     try {
+  //       const updatedConfig = {
+  //         ...config,
+  //         template: selectedTemplate,
+  //       };
+
+  //       await updateTheme(theme.id, {
+  //         config_json: JSON.stringify(updatedConfig),
+  //         name: theme.name,
+  //         slug: theme.slug,
+  //       });
+  //       setConfig(updatedConfig);
+  //       resetDirty();
+  //     } catch (error) {
+  //       console.error("Failed to save theme:", error);
+  //     } finally {
+  //       setSaving(false);
+  //     }
+  //   };
+
+  //   const handleAddSection = (libraryItem) => {
+  //     const newSection = createNewSection(libraryItem);
+  //     addSection(newSection);
+  //   };
+
+  //   const handlePreview = () => {
+  //     const currentConfig = {
+  //       ...config,
+  //       template: selectedTemplate,
+  //       previewMode: true,
+  //     };
+
+  //     useEditorStore.getState().setConfig(currentConfig);
+
+  //     if (isDirty) {
+  //       if (confirm("You have unsaved changes. Save before previewing?")) {
+  //         handleSave().then(() => {
+  //           window.open(
+  //             `${import.meta.env.VITE_APP_URL}/t/${themeSlug}?preview=true`,
+  //             "_blank",
+  //           );
+  //         });
+  //       } else {
+  //         window.open(
+  //           `${import.meta.env.VITE_APP_URL}/t/${themeSlug}?preview=true`,
+  //           "_blank",
+  //         );
+  //       }
+  //     } else {
+  //       window.open(
+  //         `${import.meta.env.VITE_APP_URL}/t/${themeSlug}?preview=true`,
+  //         "_blank",
+  //       );
+  //     }
+  //   };
+
+  //   const handleClose = () => {
+  //     if (isDirty) {
+  //       if (
+  //         confirm("You have unsaved changes. Are you sure you want to leave?")
+  //       ) {
+  //         navigate("/website-builder");
+  //       }
+  //     } else {
+  //       navigate("/website-builder");
+  //     }
+  //   };
+
+  //   const applyTemplate = (templateName) => {
+  //     if (config.layout.sections.length > 0) {
+  //       if (
+  //         !confirm(
+  //           "Applying a new template will replace your current layout. Continue?",
+  //         )
+  //       ) {
+  //         return;
+  //       }
+  //     }
+
+  //     setSelectedTemplate(templateName);
+  //     setShowTemplateModal(false);
+
+  //     const template = TEMPLATE_STRUCTURES[templateName];
+  //     const newSections = template.structure.map((section) => ({
+  //       ...section,
+  //       id: `section-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+  //     }));
+
+  //     const newConfig = {
+  //       ...config,
+  //       template: templateName,
+  //       layout: {
+  //         ...config.layout,
+  //         sections: newSections,
+  //       },
+  //     };
+
+  //     useEditorStore.getState().setConfig(newConfig);
+  //     useEditorStore.getState().resetDirty();
+  //   };
+
+  //   const handleThemeChange = (updatedTheme) => {
+  //     setTheme(updatedTheme);
+  //   };
+
+  //   return {
+  //     theme,
+  //     config,
+  //     saving,
+  //     loading,
+  //     isLoading,
+  //     isDirty,
+  //     selectedTemplate,
+  //     showSettings,
+  //     showTemplateModal,
+  //     canUndo: canUndo(),
+  //     canRedo: canRedo(),
+  //     setShowSettings,
+  //     setShowTemplateModal,
+  //     handleSave,
+  //     handleAddSection,
+  //     handlePreview,
+  //     handleClose,
+  //     applyTemplate,
+  //     handleThemeChange,
+  //     undo,
+  //     redo,
+  //   };
+  // },
   useThemeEditor: () => {
     const { themeSlug } = useParams();
     const navigate = useNavigate();
@@ -147,6 +328,17 @@ export const useThemeStore = create((set, get) => ({
     const [selectedTemplate, setSelectedTemplate] = useState("classic");
     const [showTemplateModal, setShowTemplateModal] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [originalSlug, setOriginalSlug] = useState(themeSlug); // Track original slug
+
+    // Check for nsn parameter in URL
+    useEffect(() => {
+      const searchParams = new URLSearchParams(window.location.search);
+      const nsn = searchParams.get("nsn");
+      if (nsn) {
+        // You can show a notification here if needed
+        console.log(`Redirected from old slug: ${nsn}`);
+      }
+    }, []);
 
     useEffect(() => {
       loadTheme();
@@ -156,6 +348,7 @@ export const useThemeStore = create((set, get) => ({
       try {
         const themeData = await getTheme(themeSlug);
         setTheme(themeData);
+        setOriginalSlug(themeData.slug); // Set original slug from loaded theme
 
         let configData = themeData.config_json;
         if (typeof configData === "string") {
@@ -183,14 +376,20 @@ export const useThemeStore = create((set, get) => ({
           template: selectedTemplate,
         };
 
-        await updateTheme(theme.id, {
+        const response = await updateTheme(theme.id, {
           config_json: JSON.stringify(updatedConfig),
           name: theme.name,
+          slug: theme.slug,
         });
+
         setConfig(updatedConfig);
         resetDirty();
+
+        // Return the response for chaining
+        return response;
       } catch (error) {
         console.error("Failed to save theme:", error);
+        throw error;
       } finally {
         setSaving(false);
       }
@@ -214,19 +413,19 @@ export const useThemeStore = create((set, get) => ({
         if (confirm("You have unsaved changes. Save before previewing?")) {
           handleSave().then(() => {
             window.open(
-              `${import.meta.env.VITE_APP_URL}/t/${themeSlug}?preview=true`,
+              `${import.meta.env.VITE_APP_URL}/t/${theme.slug}?preview=true`,
               "_blank",
             );
           });
         } else {
           window.open(
-            `${import.meta.env.VITE_APP_URL}/t/${themeSlug}?preview=true`,
+            `${import.meta.env.VITE_APP_URL}/t/${theme.slug}?preview=true`,
             "_blank",
           );
         }
       } else {
         window.open(
-          `${import.meta.env.VITE_APP_URL}/t/${themeSlug}?preview=true`,
+          `${import.meta.env.VITE_APP_URL}/t/${theme.slug}?preview=true`,
           "_blank",
         );
       }
@@ -293,6 +492,7 @@ export const useThemeStore = create((set, get) => ({
       showTemplateModal,
       canUndo: canUndo(),
       canRedo: canRedo(),
+      originalSlug, // Return originalSlug
       setShowSettings,
       setShowTemplateModal,
       handleSave,

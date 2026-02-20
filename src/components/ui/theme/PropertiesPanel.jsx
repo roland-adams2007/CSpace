@@ -9,7 +9,6 @@ import {
   Image as ImageIcon,
   Settings,
   Film,
-  Move,
 } from "lucide-react";
 import { useWebsiteStore } from "../../../store/store";
 import FilePickerModal from "../modals/FilePickerModal";
@@ -54,15 +53,30 @@ export default function PropertiesPanel() {
         updateConfig("header.props.logo", fileUrl);
       }
     } else if (currentImageField.type === "footer") {
-      // Footer image fields
     } else if (currentImageField.sectionId) {
       if (currentImageField.arrayPath) {
-        updateArrayItem(
-          currentImageField.arrayPath,
-          currentImageField.index,
-          currentImageField.field,
-          fileUrl,
-        );
+        if (currentImageField.arrayPath === "carousel.slides") {
+          const newProps = { ...section.props };
+          if (!newProps.carousel) newProps.carousel = { slides: [] };
+          if (!newProps.carousel.slides) newProps.carousel.slides = [];
+          const slides = [...newProps.carousel.slides];
+          if (!slides[currentImageField.index]) {
+            slides[currentImageField.index] = {};
+          }
+          slides[currentImageField.index] = {
+            ...slides[currentImageField.index],
+            [currentImageField.field]: fileUrl
+          };
+          newProps.carousel.slides = slides;
+          updateSection(currentImageField.sectionId, { props: newProps });
+        } else {
+          updateArrayItem(
+            currentImageField.arrayPath,
+            currentImageField.index,
+            currentImageField.field,
+            fileUrl,
+          );
+        }
       } else if (currentImageField.isStyle) {
         updateStyle(currentImageField.field, fileUrl);
       } else {
@@ -610,11 +624,14 @@ export default function PropertiesPanel() {
   };
 
   const updateArrayItem = (arrayPath, index, itemPath, value) => {
-    const array = [...section.props[arrayPath]];
+    const array = [...(section.props[arrayPath] || [])];
+    if (array.length === 0) return;
+    
     const keys = itemPath.split(".");
     let current = array[index];
 
     for (let i = 0; i < keys.length - 1; i++) {
+      if (!current[keys[i]]) current[keys[i]] = {};
       current = current[keys[i]];
     }
 
@@ -631,7 +648,7 @@ export default function PropertiesPanel() {
   };
 
   const removeArrayItem = (arrayPath, index) => {
-    const array = [...section.props[arrayPath]];
+    const array = [...(section.props[arrayPath] || [])];
     array.splice(index, 1);
     updateProp(arrayPath, array);
   };
@@ -1437,172 +1454,6 @@ export default function PropertiesPanel() {
             ),
           )}
 
-        {section.props.studies &&
-          renderArrayEditor(
-            "Case Studies",
-            "studies",
-            {
-              id: uuidv4(),
-              image: "",
-              title: "Case Study",
-              client: "Client Name",
-              description: "Project description",
-              results: [],
-              metrics: [],
-              link: "#"
-            },
-            (item, idx, update) => (
-              <>
-                {renderInput("Title", item.title, (v) => update("title", v))}
-                {renderInput("Client", item.client, (v) => update("client", v))}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Image
-                  </label>
-                  {item.image && (
-                    <div className="relative border-2 border-gray-200 rounded-lg p-2 mb-2">
-                      <img
-                        src={item.image}
-                        alt={item.title}
-                        className="w-full h-32 object-cover rounded"
-                      />
-                      <button
-                        onClick={() => update("image", "")}
-                        className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded hover:bg-red-700"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  )}
-                  <button
-                    onClick={() =>
-                      openFilePicker({
-                        sectionId: section.id,
-                        arrayPath: "studies",
-                        index: idx,
-                        field: "image",
-                      })
-                    }
-                    className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 text-sm text-gray-600"
-                  >
-                    <ImageIcon className="w-4 h-4" />
-                    {item.image ? "Change Image" : "Upload Image"}
-                  </button>
-                </div>
-                {renderInput(
-                  "Description",
-                  item.description,
-                  (v) => update("description", v),
-                  "textarea",
-                )}
-                {renderInput("Link", item.link || "#", (v) => update("link", v))}
-                
-                {item.results && (
-                  <div className="mt-3">
-                    <label className="block text-xs font-medium text-gray-700 mb-2">
-                      Results (comma separated)
-                    </label>
-                    <input
-                      type="text"
-                      value={item.results.join(", ")}
-                      onChange={(e) => {
-                        const results = e.target.value.split(",").map(r => r.trim()).filter(r => r);
-                        update("results", results);
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      placeholder="300% increase, 50k users, etc"
-                    />
-                  </div>
-                )}
-
-                {item.metrics && (
-                  <div className="mt-3">
-                    <label className="block text-xs font-medium text-gray-700 mb-2">
-                      Metrics (JSON format)
-                    </label>
-                    <textarea
-                      value={JSON.stringify(item.metrics, null, 2)}
-                      onChange={(e) => {
-                        try {
-                          const metrics = JSON.parse(e.target.value);
-                          update("metrics", metrics);
-                        } catch (err) {}
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono"
-                      rows="4"
-                    />
-                  </div>
-                )}
-              </>
-            ),
-          )}
-
-        {section.props.badges &&
-          renderArrayEditor(
-            "Trust Badges",
-            "badges",
-            {
-              id: uuidv4(),
-              icon: "shield",
-              title: "Badge",
-              description: "Badge description"
-            },
-            (item, idx, update) => (
-              <>
-                {renderInput("Icon", item.icon, (v) => update("icon", v))}
-                {renderInput("Title", item.title, (v) => update("title", v))}
-                {renderInput(
-                  "Description",
-                  item.description,
-                  (v) => update("description", v),
-                )}
-              </>
-            ),
-          )}
-
-        {section.props.awards && (
-          <div className="mb-6 pb-6 border-b border-gray-200">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Awards & Recognition
-            </label>
-            <div className="space-y-2">
-              {section.props.awards.map((award, idx) => (
-                <div key={idx} className="flex gap-2">
-                  <input
-                    type="text"
-                    value={award}
-                    onChange={(e) => {
-                      const newAwards = [...section.props.awards];
-                      newAwards[idx] = e.target.value;
-                      updateProp("awards", newAwards);
-                    }}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                  />
-                  <button
-                    onClick={() => {
-                      const newAwards = [...section.props.awards];
-                      newAwards.splice(idx, 1);
-                      updateProp("awards", newAwards);
-                    }}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-              <button
-                onClick={() => {
-                  const awards = section.props.awards || [];
-                  updateProp("awards", [...awards, "New Award"]);
-                }}
-                className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-500 hover:text-indigo-600 text-sm text-gray-500"
-              >
-                + Add Award
-              </button>
-            </div>
-          </div>
-        )}
-
         {section.props.testimonials &&
           renderArrayEditor(
             "Testimonials",
@@ -1994,37 +1845,7 @@ export default function PropertiesPanel() {
             setShowFilePicker(false);
             setCurrentImageField(null);
           }}
-          onSelectFile={(file) => {
-            const fileUrl = file.file_path;
-            
-            if (currentImageField.isStyle) {
-              updateStyle(currentImageField.field, fileUrl);
-            } else if (currentImageField.arrayPath) {
-              if (currentImageField.arrayPath.includes('.')) {
-                const [parentPath, childPath] = currentImageField.arrayPath.split('.');
-                const parentArray = [...section.props[parentPath]];
-                const item = parentArray[currentImageField.index];
-                if (childPath === 'slides') {
-                  item[childPath] = item[childPath] || [];
-                  item[childPath][currentImageField.slideIndex] = item[childPath][currentImageField.slideIndex] || {};
-                  item[childPath][currentImageField.slideIndex][currentImageField.field] = fileUrl;
-                  updateProp(parentPath, parentArray);
-                }
-              } else {
-                updateArrayItem(
-                  currentImageField.arrayPath,
-                  currentImageField.index,
-                  currentImageField.field,
-                  fileUrl,
-                );
-              }
-            } else {
-              updateProp(currentImageField.field, fileUrl);
-            }
-            
-            setShowFilePicker(false);
-            setCurrentImageField(null);
-          }}
+          onSelectFile={handleFileSelect}
           websiteId={selectedWebsite.id}
           allowedTypes={["image"]}
         />

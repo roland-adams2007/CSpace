@@ -1,7 +1,9 @@
+import { v4 as uuidv4 } from 'uuid';
+
 export const SECTION_TYPES = {
   HERO: "hero",
   FEATURES: "features",
-  CTA: "cta",
+ CTA: "cta",
   CONTENT: "content",
   GALLERY: "gallery",
   TESTIMONIALS: "testimonials",
@@ -66,6 +68,45 @@ export const SECTION_LIBRARY = [
     },
   },
   {
+    id: "hero-carousel",
+    type: SECTION_TYPES.HERO,
+    name: "Hero - Carousel",
+    icon: "film",
+    defaultProps: {
+      carousel: {
+        enabled: true,
+        autoplay: true,
+        interval: 5000,
+        slides: [
+          {
+            id: uuidv4(),
+            image: "",
+            heading: "Transform Your Digital Presence",
+            subheading: "Build amazing websites in minutes",
+            ctaText: "Get Started",
+            ctaLink: "#"
+          },
+          {
+            id: uuidv4(),
+            image: "",
+            heading: "Powerful Features",
+            subheading: "Everything you need to succeed online",
+            ctaText: "Learn More",
+            ctaLink: "#"
+          },
+          {
+            id: uuidv4(),
+            image: "",
+            heading: "Join Thousands",
+            subheading: "Trusted by creators worldwide",
+            ctaText: "Start Free Trial",
+            ctaLink: "#"
+          }
+        ]
+      }
+    },
+  },
+  {
     id: "features-grid",
     type: SECTION_TYPES.FEATURES,
     name: "Features - Grid",
@@ -75,37 +116,37 @@ export const SECTION_LIBRARY = [
       subheading: "Powerful features to help you succeed",
       features: [
         {
-          id: "f1",
+          id: uuidv4(),
           icon: "zap",
           title: "Lightning Fast",
           description: "Optimized for speed with instant load times",
         },
         {
-          id: "f2",
+          id: uuidv4(),
           icon: "shield",
           title: "Secure & Safe",
           description: "Enterprise-grade security built-in",
         },
         {
-          id: "f3",
+          id: uuidv4(),
           icon: "smartphone",
           title: "Mobile Ready",
           description: "Perfect on every device and screen size",
         },
         {
-          id: "f4",
+          id: uuidv4(),
           icon: "globe",
           title: "Global CDN",
           description: "Fast delivery worldwide",
         },
         {
-          id: "f5",
+          id: uuidv4(),
           icon: "code",
           title: "Developer Friendly",
           description: "Custom code when you need it",
         },
         {
-          id: "f6",
+          id: uuidv4(),
           icon: "trending-up",
           title: "SEO Optimized",
           description: "Rank higher in search results",
@@ -124,19 +165,19 @@ export const SECTION_LIBRARY = [
       subheading: "Built for success from day one",
       features: [
         {
-          id: "f1",
+          id: uuidv4(),
           icon: "check-circle",
           title: "Easy to Use",
           description: "Intuitive interface designed for everyone",
         },
         {
-          id: "f2",
+          id: uuidv4(),
           icon: "check-circle",
           title: "Powerful Tools",
           description: "Advanced features when you need them",
         },
         {
-          id: "f3",
+          id: uuidv4(),
           icon: "check-circle",
           title: "Flexible Design",
           description: "Customize every aspect of your site",
@@ -151,30 +192,62 @@ export const SECTION_LIBRARY = [
     name: "Stats - Row",
     icon: "bar-chart",
     defaultProps: {
+      heading: "Our Impact",
+      subheading: "Numbers speak louder than words",
       stats: [
         {
-          id: "s1",
+          id: uuidv4(),
           value: "100K+",
           label: "Active Users",
           description: "Worldwide",
         },
         {
-          id: "s2",
+          id: uuidv4(),
           value: "99.9%",
           label: "Uptime",
           description: "Guaranteed",
         },
         {
-          id: "s3",
+          id: uuidv4(),
           value: "4.9/5",
           label: "Rating",
           description: "Customer satisfaction",
         },
         {
-          id: "s4",
+          id: uuidv4(),
           value: "24/7",
           label: "Support",
           description: "Always available",
+        },
+      ],
+    },
+  },
+  {
+    id: "stats-grid",
+    type: SECTION_TYPES.STATS,
+    name: "Stats - With Headline",
+    icon: "trending-up",
+    defaultProps: {
+      heading: "Trusted by teams worldwide",
+      subheading: "Join thousands of companies using our platform",
+      stats: [
+        {
+          id: uuidv4(),
+          value: "10B+",
+          label: "Requests",
+          description: "Processed monthly",
+        },
+        {
+          id: uuidv4(),
+          value: "98%",
+          label: "Satisfaction",
+          description: "Customer happiness",
+        },
+        {
+          id: uuidv4(),
+          value: "24/7",
+          label: "Support",
+          description: "Dedicated team",
         },
       ],
     },
@@ -251,7 +324,50 @@ export const SECTION_LIBRARY = [
     defaultProps: {
       heading: "Our Work",
       subheading: "Explore our latest projects",
-      items: [],
+      items: [
+        {
+          id: uuidv4(),
+          image: "",
+          title: "Project Alpha",
+          category: "Design",
+          description: "A modern web design project"
+        },
+        {
+          id: uuidv4(),
+          image: "",
+          title: "Project Beta",
+          category: "Development",
+          description: "Custom web application"
+        },
+        {
+          id: uuidv4(),
+          image: "",
+          title: "Project Gamma",
+          category: "Branding",
+          description: "Complete brand identity"
+        },
+        {
+          id: uuidv4(),
+          image: "",
+          title: "Project Delta",
+          category: "Marketing",
+          description: "Digital marketing campaign"
+        },
+        {
+          id: uuidv4(),
+          image: "",
+          title: "Project Epsilon",
+          category: "E-commerce",
+          description: "Online store platform"
+        },
+        {
+          id: uuidv4(),
+          image: "",
+          title: "Project Zeta",
+          category: "Mobile",
+          description: "Cross-platform app"
+        }
+      ],
       columns: 3,
     },
   },
@@ -264,11 +380,57 @@ export const SECTION_LIBRARY = [
       heading: "Portfolio",
       subheading: "Showcasing creative excellence",
       items: [
-        { id: "g1", image: "", title: "Project Alpha", category: "Design" },
-        { id: "g2", image: "", title: "Project Beta", category: "Development" },
-        { id: "g3", image: "", title: "Project Gamma", category: "Branding" },
+        { id: uuidv4(), image: "", title: "Project Alpha", category: "Design" },
+        { id: uuidv4(), image: "", title: "Project Beta", category: "Development" },
+        { id: uuidv4(), image: "", title: "Project Gamma", category: "Branding" },
       ],
       columns: 3,
+    },
+  },
+  {
+    id: "gallery-carousel",
+    type: SECTION_TYPES.GALLERY,
+    name: "Gallery - Carousel",
+    icon: "film",
+    defaultProps: {
+      heading: "Featured Projects",
+      subheading: "A showcase of our best work",
+      items: [
+        {
+          id: uuidv4(),
+          image: "",
+          title: "Featured Project 1",
+          category: "Design",
+          description: "Complete brand redesign"
+        },
+        {
+          id: uuidv4(),
+          image: "",
+          title: "Featured Project 2",
+          category: "Development",
+          description: "Custom platform"
+        },
+        {
+          id: uuidv4(),
+          image: "",
+          title: "Featured Project 3",
+          category: "Strategy",
+          description: "Digital transformation"
+        },
+        {
+          id: uuidv4(),
+          image: "",
+          title: "Featured Project 4",
+          category: "Marketing",
+          description: "Campaign strategy"
+        }
+      ],
+      columns: 1,
+      carousel: {
+        enabled: true,
+        autoplay: true,
+        interval: 5000
+      }
     },
   },
   {
@@ -281,7 +443,7 @@ export const SECTION_LIBRARY = [
       subheading: "Real feedback from real people",
       testimonials: [
         {
-          id: "t1",
+          id: uuidv4(),
           name: "Sarah Mitchell",
           role: "Creative Director",
           content: "This platform transformed how we build websites. The flexibility and ease of use are unmatched.",
@@ -289,10 +451,18 @@ export const SECTION_LIBRARY = [
           rating: 5,
         },
         {
-          id: "t2",
+          id: uuidv4(),
           name: "James Chen",
           role: "Startup Founder",
           content: "Finally, a website builder that doesn't limit creativity. Highly recommended!",
+          avatar: "",
+          rating: 5,
+        },
+        {
+          id: uuidv4(),
+          name: "Emily Rodriguez",
+          role: "Marketing Manager",
+          content: "The ROI has been incredible. We launched in days and saw immediate results.",
           avatar: "",
           rating: 5,
         },
@@ -309,15 +479,59 @@ export const SECTION_LIBRARY = [
       subheading: "See what our clients have achieved",
       testimonials: [
         {
-          id: "t1",
+          id: uuidv4(),
           name: "Emily Rodriguez",
           role: "Marketing Manager",
           content: "The ROI has been incredible. We launched in days and saw immediate results.",
           avatar: "",
           rating: 5,
-          metric: "300% increase",
+          metric: "300% increase"
         },
       ],
+    },
+  },
+  {
+    id: "testimonials-carousel",
+    type: SECTION_TYPES.TESTIMONIALS,
+    name: "Testimonials - Carousel",
+    icon: "film",
+    defaultProps: {
+      heading: "Success Stories",
+      subheading: "See what our clients have achieved",
+      testimonials: [
+        {
+          id: uuidv4(),
+          name: "Emily Rodriguez",
+          role: "Marketing Manager",
+          content: "The ROI has been incredible. We launched in days and saw immediate results.",
+          avatar: "",
+          rating: 5,
+          metric: "300% increase"
+        },
+        {
+          id: uuidv4(),
+          name: "David Kim",
+          role: "E-commerce Owner",
+          content: "Sales doubled within the first month. The platform is incredibly powerful yet easy to use.",
+          avatar: "",
+          rating: 5,
+          metric: "2x revenue"
+        },
+        {
+          id: uuidv4(),
+          name: "Lisa Wang",
+          role: "Product Designer",
+          content: "Finally, a tool that understands both designers and developers. Pure joy to use.",
+          avatar: "",
+          rating: 5,
+          metric: "10+ projects"
+        }
+      ],
+      carousel: {
+        enabled: true,
+        autoplay: true,
+        interval: 5000
+      }
     },
   },
   {
@@ -330,7 +544,7 @@ export const SECTION_LIBRARY = [
       subheading: "Flexible pricing that grows with you",
       plans: [
         {
-          id: "p1",
+          id: uuidv4(),
           name: "Starter",
           price: "$12",
           period: "month",
@@ -345,7 +559,7 @@ export const SECTION_LIBRARY = [
           highlighted: false,
         },
         {
-          id: "p2",
+          id: uuidv4(),
           name: "Pro",
           price: "$39",
           period: "month",
@@ -362,7 +576,7 @@ export const SECTION_LIBRARY = [
           badge: "Most Popular",
         },
         {
-          id: "p3",
+          id: uuidv4(),
           name: "Enterprise",
           price: "Custom",
           period: "",
@@ -389,9 +603,9 @@ export const SECTION_LIBRARY = [
       heading: "Get In Touch",
       subheading: "We'd love to hear from you",
       fields: [
-        { id: "name", type: "text", label: "Name", required: true },
-        { id: "email", type: "email", label: "Email", required: true },
-        { id: "message", type: "textarea", label: "Message", required: true },
+        { id: uuidv4(), type: "text", label: "Name", required: true },
+        { id: uuidv4(), type: "email", label: "Email", required: true },
+        { id: uuidv4(), type: "textarea", label: "Message", required: true },
       ],
       submitText: "Send Message",
     },
@@ -406,7 +620,7 @@ export const SECTION_LIBRARY = [
       subheading: "The people behind the product",
       members: [
         {
-          id: "m1",
+          id: uuidv4(),
           name: "Olivia Chen",
           role: "Creative Director",
           bio: "Leading design with passion and precision",
@@ -414,7 +628,7 @@ export const SECTION_LIBRARY = [
           socials: {},
         },
         {
-          id: "m2",
+          id: uuidv4(),
           name: "Marcus Thompson",
           role: "Head of Product",
           bio: "Building tools that empower creators",
@@ -422,7 +636,7 @@ export const SECTION_LIBRARY = [
           socials: {},
         },
         {
-          id: "m3",
+          id: uuidv4(),
           name: "Yuki Tanaka",
           role: "Lead Engineer",
           bio: "Crafting elegant technical solutions",
@@ -443,17 +657,17 @@ export const SECTION_LIBRARY = [
       subheading: "Everything you need to know",
       faqs: [
         {
-          id: "q1",
+          id: uuidv4(),
           question: "Do I need coding knowledge?",
           answer: "Not at all! Our platform is designed for everyone, from complete beginners to experienced developers.",
         },
         {
-          id: "q2",
+          id: uuidv4(),
           question: "Can I use my own domain?",
           answer: "Yes! You can connect any domain you own or purchase a new one directly through our platform.",
         },
         {
-          id: "q3",
+          id: uuidv4(),
           question: "What kind of websites can I build?",
           answer: "Anything you can imagine! From portfolios and blogs to online stores and business sites.",
         },
@@ -475,6 +689,205 @@ export const SECTION_LIBRARY = [
         "Exclusive content",
         "Early access",
       ],
+    },
+  },
+  {
+    id: "process-timeline",
+    type: SECTION_TYPES.PROCESS,
+    name: "Process - Timeline",
+    icon: "clock",
+    defaultProps: {
+      heading: "How It Works",
+      subheading: "Simple steps to get started",
+      steps: [
+        {
+          id: uuidv4(),
+          icon: "edit",
+          title: "Plan",
+          description: "Define your goals and requirements",
+          duration: "1-2 days"
+        },
+        {
+          id: uuidv4(),
+          icon: "code",
+          title: "Build",
+          description: "Create your website with our tools",
+          duration: "3-5 days"
+        },
+        {
+          id: uuidv4(),
+          icon: "rocket",
+          title: "Launch",
+          description: "Deploy and go live instantly",
+          duration: "Same day"
+        }
+      ]
+    },
+  },
+  {
+    id: "process-grid",
+    type: SECTION_TYPES.PROCESS,
+    name: "Process - Grid",
+    icon: "grid",
+    defaultProps: {
+      heading: "Our Approach",
+      subheading: "How we deliver results",
+      steps: [
+        {
+          id: uuidv4(),
+          icon: "search",
+          title: "Discovery",
+          description: "Understanding your needs",
+          number: "01"
+        },
+        {
+          id: uuidv4(),
+          icon: "pen-tool",
+          title: "Design",
+          description: "Creating the perfect look",
+          number: "02"
+        },
+        {
+          id: uuidv4(),
+          icon: "code",
+          title: "Development",
+          description: "Building your solution",
+          number: "03"
+        },
+        {
+          id: uuidv4(),
+          icon: "check-circle",
+          title: "Quality",
+          description: "Testing and optimization",
+          number: "04"
+        }
+      ]
+    },
+  },
+  {
+    id: "benefits-grid",
+    type: SECTION_TYPES.BENEFITS,
+    name: "Benefits - Grid",
+    icon: "award",
+    defaultProps: {
+      heading: "Why Choose Us",
+      subheading: "The advantages of working with us",
+      benefits: [
+        {
+          id: uuidv4(),
+          icon: "zap",
+          title: "Lightning Fast",
+          description: "10x faster performance",
+          metric: "99.9%"
+        },
+        {
+          id: uuidv4(),
+          icon: "shield",
+          title: "Bank Level Security",
+          description: "Enterprise encryption",
+          metric: "256-bit"
+        },
+        {
+          id: uuidv4(),
+          icon: "headphones",
+          title: "24/7 Support",
+          description: "Always here to help",
+          metric: "< 5min"
+        },
+        {
+          id: uuidv4(),
+          icon: "trending-up",
+          title: "Proven Results",
+          description: "Average 3x ROI",
+          metric: "+300%"
+        }
+      ]
+    },
+  },
+  {
+    id: "benefits-list",
+    type: SECTION_TYPES.BENEFITS,
+    name: "Benefits - List",
+    icon: "list",
+    defaultProps: {
+      heading: "Everything Included",
+      subheading: "No hidden fees or surprises",
+      benefits: [
+        {
+          id: uuidv4(),
+          icon: "check-circle",
+          title: "Unlimited Pages",
+          description: "Create as many pages as you need"
+        },
+        {
+          id: uuidv4(),
+          icon: "check-circle",
+          title: "Custom Domain",
+          description: "Use your own domain name"
+        },
+        {
+          id: uuidv4(),
+          icon: "check-circle",
+          title: "SSL Certificate",
+          description: "Free SSL for all sites"
+        },
+        {
+          id: uuidv4(),
+          icon: "check-circle",
+          title: "Daily Backups",
+          description: "Automatic backup system"
+        },
+        {
+          id: uuidv4(),
+          icon: "check-circle",
+          title: "Analytics",
+          description: "Built-in traffic tracking"
+        }
+      ]
+    },
+  },
+  {
+    id: "logos-grid",
+    type: SECTION_TYPES.LOGOS,
+    name: "Logos - Grid",
+    icon: "grid",
+    defaultProps: {
+      heading: "Trusted by Industry Leaders",
+      subheading: "Join thousands of companies using our platform",
+      logos: [
+        { id: uuidv4(), image: "", name: "Company 1", width: "120" },
+        { id: uuidv4(), image: "", name: "Company 2", width: "120" },
+        { id: uuidv4(), image: "", name: "Company 3", width: "120" },
+        { id: uuidv4(), image: "", name: "Company 4", width: "120" },
+        { id: uuidv4(), image: "", name: "Company 5", width: "120" },
+        { id: uuidv4(), image: "", name: "Company 6", width: "120" }
+      ],
+      columns: 4
+    },
+  },
+  {
+    id: "logos-carousel",
+    type: SECTION_TYPES.LOGOS,
+    name: "Logos - Carousel",
+    icon: "film",
+    defaultProps: {
+      heading: "Trusted by the best",
+      subheading: "Companies that rely on us",
+      logos: [
+        { id: uuidv4(), image: "", name: "Partner 1" },
+        { id: uuidv4(), image: "", name: "Partner 2" },
+        { id: uuidv4(), image: "", name: "Partner 3" },
+        { id: uuidv4(), image: "", name: "Partner 4" },
+        { id: uuidv4(), image: "", name: "Partner 5" },
+        { id: uuidv4(), image: "", name: "Partner 6" },
+        { id: uuidv4(), image: "", name: "Partner 7" },
+        { id: uuidv4(), image: "", name: "Partner 8" }
+      ],
+      carousel: {
+        enabled: true,
+        autoplay: true,
+        interval: 3000
+      }
     },
   },
 ];

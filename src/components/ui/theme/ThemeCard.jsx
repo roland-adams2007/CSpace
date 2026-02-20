@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 
 export default function ThemeCard({ theme, onSetActive, onDelete, onDuplicate, websiteSlug }) {
   const [showMenu, setShowMenu] = useState(false);
+  const [menuPosition, setMenuPosition] = useState("bottom");
+  const [showTooltip, setShowTooltip] = useState(false);
   const menuRef = useRef(null);
   const buttonRef = useRef(null);
   const navigate = useNavigate();
@@ -11,12 +13,12 @@ export default function ThemeCard({ theme, onSetActive, onDelete, onDuplicate, w
   const isSystem = !theme.user_id;
   const isActive = theme.is_active === 1;
   const isDefault = theme.is_default === 1;
-  const isDraft = theme.status === 'draft';
+  const isDraft = theme.status === "draft";
 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
-        menuRef.current && 
+        menuRef.current &&
         buttonRef.current &&
         !menuRef.current.contains(event.target) &&
         !buttonRef.current.contains(event.target)
@@ -27,11 +29,28 @@ export default function ThemeCard({ theme, onSetActive, onDelete, onDuplicate, w
 
     if (showMenu) {
       document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("touchstart", handleClickOutside);
     }
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
     };
+  }, [showMenu]);
+
+  useEffect(() => {
+    if (showMenu && buttonRef.current) {
+      const buttonRect = buttonRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - buttonRect.bottom;
+      const spaceAbove = buttonRect.top;
+      const menuHeight = 200;
+
+      if (spaceBelow < menuHeight && spaceAbove > menuHeight) {
+        setMenuPosition("top");
+      } else {
+        setMenuPosition("bottom");
+      }
+    }
   }, [showMenu]);
 
   const handleEdit = () => {
@@ -40,31 +59,28 @@ export default function ThemeCard({ theme, onSetActive, onDelete, onDuplicate, w
   };
 
   const handlePreview = () => {
-    window.open(`${import.meta.env.VITE_APP_URL}/t/${theme.slug}`, '_blank');
+    window.open(`${import.meta.env.VITE_APP_URL}/t/${theme.slug}`, "_blank");
   };
 
   const getStatusBadge = () => {
     if (isDefault) {
       return (
-        <span className="px-2.5 py-1 bg-white/90 backdrop-blur-sm text-indigo-700 text-xs font-semibold rounded-full flex items-center shadow-sm">
-          <Star className="w-3 h-3 mr-1 fill-current" />
-          Default
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200">
+          <Star className="w-3 h-3" /> Default
         </span>
       );
     }
     if (isActive) {
       return (
-        <span className="px-2.5 py-1 bg-emerald-500/90 backdrop-blur-sm text-white text-xs font-semibold rounded-full flex items-center shadow-sm">
-          <CheckCircle className="w-3 h-3 mr-1" />
-          Active
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 border border-emerald-200">
+          <CheckCircle className="w-3 h-3" /> Active
         </span>
       );
     }
     if (isDraft) {
       return (
-        <span className="px-2.5 py-1 bg-amber-500/90 backdrop-blur-sm text-white text-xs font-semibold rounded-full flex items-center shadow-sm">
-          <FileText className="w-3 h-3 mr-1" />
-          Draft
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200">
+          <FileText className="w-3 h-3" /> Draft
         </span>
       );
     }
@@ -90,7 +106,6 @@ export default function ThemeCard({ theme, onSetActive, onDelete, onDuplicate, w
     const now = new Date();
     const diffTime = Math.abs(now - date);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
     if (diffDays === 0) return "Today";
     if (diffDays === 1) return "Yesterday";
     if (diffDays < 7) return `${diffDays} days ago`;
@@ -99,72 +114,70 @@ export default function ThemeCard({ theme, onSetActive, onDelete, onDuplicate, w
   };
 
   return (
-    <div className={`group bg-white rounded-xl shadow-sm border-2 overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${isActive ? 'border-indigo-500 ring-2 ring-indigo-100' : 'border-gray-200'}`}>
-      <div className={`relative h-48 bg-gradient-to-br ${getGradientColor()} overflow-hidden`}>
-        <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,rgba(255,255,255,0.05)_10px,rgba(255,255,255,0.05)_20px)]"></div>
-        
-        <div className="absolute top-3 right-3 flex gap-2">
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 flex flex-col">
+      <div className={`h-32 bg-gradient-to-br ${getGradientColor()} relative flex items-center justify-center`}>
+        <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap">
           {getStatusBadge()}
           {isSystem && (
-            <span className="px-2.5 py-1 bg-gray-900/80 backdrop-blur-sm text-white text-xs font-semibold rounded-full">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-white/20 text-white backdrop-blur-sm">
               System
             </span>
           )}
         </div>
-
-        <div className="absolute inset-0 flex items-center justify-center opacity-30">
-          <div className="w-20 h-20 bg-white/20 rounded-2xl backdrop-blur-sm flex items-center justify-center">
-            <div className="w-12 h-12 bg-white/30 rounded-lg"></div>
-          </div>
-        </div>
-
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+        <button
+          onClick={handlePreview}
+          className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg backdrop-blur-sm transition-all text-sm font-medium"
+        >
+          <Eye className="w-4 h-4" /> Preview
+        </button>
       </div>
 
-      <div className="p-5">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex-1 min-w-0">
-            <h3 className="text-base font-semibold text-gray-900 truncate mb-1">
+      <div className="p-4 flex flex-col flex-1">
+        <div className="mb-3 relative">
+          <div
+            className="relative inline-block max-w-full"
+            onMouseEnter={() => setShowTooltip(true)}
+            onMouseLeave={() => setShowTooltip(false)}
+          >
+            <h3 className="font-semibold text-gray-900 text-base truncate max-w-full cursor-default">
               {theme.name}
             </h3>
-            <p className="text-sm text-gray-500 line-clamp-2">
-              {theme.description || "No description"}
-            </p>
+            {showTooltip && (
+              <div className="absolute z-50 bottom-full left-0 mb-1.5 px-2.5 py-1.5 bg-gray-900 text-white text-xs rounded-lg shadow-lg whitespace-nowrap pointer-events-none">
+                {theme.name}
+                <div className="absolute top-full left-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-900" />
+              </div>
+            )}
           </div>
+          <p className="text-sm text-gray-500 mt-0.5 line-clamp-2">
+            {theme.description || "No description"}
+          </p>
         </div>
 
-        <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
-          <span>Modified {formatDate(theme.updated_at)}</span>
-        </div>
+        <div className="mt-auto">
+          <p className="text-xs text-gray-400 mb-3">
+            Modified {formatDate(theme.updated_at)}
+          </p>
 
-        <div className="flex gap-2">
-          <button
-            onClick={handleEdit}
-            disabled={isSystem}
-            className={`flex-1 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-              isSystem
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-md'
-            }`}
-          >
-            <Edit3 className="w-4 h-4 inline mr-1.5" />
-            {isSystem ? 'Read Only' : 'Edit Theme'}
-          </button>
+          <div className="flex gap-2 relative">
+            <button
+              onClick={handleEdit}
+              disabled={isSystem}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                isSystem
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-indigo-600 text-white hover:bg-indigo-700"
+              }`}
+            >
+              <Edit3 className="w-4 h-4" />
+              {isSystem ? "Read Only" : "Edit Theme"}
+            </button>
 
-          <button
-            onClick={handlePreview}
-            className="px-3 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all hover:border-indigo-300"
-            title="Preview"
-          >
-            <Eye className="w-4 h-4" />
-          </button>
-
-          <div className="relative">
             <button
               ref={buttonRef}
               onClick={(e) => {
                 e.stopPropagation();
-                setShowMenu(!showMenu);
+                setShowMenu((prev) => !prev);
               }}
               className="px-3 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all hover:border-indigo-300"
               title="More options"
@@ -173,10 +186,28 @@ export default function ThemeCard({ theme, onSetActive, onDelete, onDuplicate, w
             </button>
 
             {showMenu && (
-              <div 
+              <div
                 ref={menuRef}
-                className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50"
-                style={{ animation: 'fadeIn 0.2s ease-out' }}
+                style={{
+                  position: "fixed",
+                  zIndex: 9999,
+                  ...(buttonRef.current
+                    ? (() => {
+                        const rect = buttonRef.current.getBoundingClientRect();
+                        if (menuPosition === "top") {
+                          return {
+                            bottom: window.innerHeight - rect.top + 4,
+                            right: window.innerWidth - rect.right,
+                          };
+                        }
+                        return {
+                          top: rect.bottom + 4,
+                          right: window.innerWidth - rect.right,
+                        };
+                      })()
+                    : {}),
+                }}
+                className="w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1 overflow-hidden"
               >
                 {!isActive && !isSystem && (
                   <button
@@ -191,7 +222,7 @@ export default function ThemeCard({ theme, onSetActive, onDelete, onDuplicate, w
                     Set as Active
                   </button>
                 )}
-                
+
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -206,7 +237,7 @@ export default function ThemeCard({ theme, onSetActive, onDelete, onDuplicate, w
 
                 {!isSystem && !isDefault && (
                   <>
-                    <div className="my-1 border-t border-gray-100"></div>
+                    <div className="border-t border-gray-100 my-1" />
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -225,6 +256,13 @@ export default function ThemeCard({ theme, onSetActive, onDelete, onDuplicate, w
           </div>
         </div>
       </div>
+
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: scale(0.95); }
+          to { opacity: 1; transform: scale(1); }
+        }
+      `}</style>
     </div>
   );
 }

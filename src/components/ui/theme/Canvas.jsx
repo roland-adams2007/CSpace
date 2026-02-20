@@ -18,8 +18,9 @@ import SortableSection from "./SortableSection";
 import { Inbox, Menu as MenuIcon, X } from "lucide-react";
 
 export default function Canvas({ selectedTemplate }) {
-  const { config, reorderSections, selectSection, selectHeader, selectFooter } = useEditorStore();
-  const sections = config.layout.sections;
+  const { config, reorderSections, selectSection, selectHeader, selectFooter } =
+    useEditorStore();
+  const sections = config.layout?.sections;
   const themeColors = config.theme?.colors;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -47,23 +48,23 @@ export default function Canvas({ selectedTemplate }) {
 
   const getHeaderStyle = () => {
     const baseStyle = {
-      height: config.header.style?.height || '80px',
-      backgroundColor: config.header.style?.backgroundColor || '#ffffff',
+      height: config.header?.style?.height || "80px",
+      backgroundColor: config.header?.style?.backgroundColor || "#ffffff",
     };
 
-    if (config.header.style?.sticky) {
-      baseStyle.position = 'sticky';
-      baseStyle.top = '0';
-      baseStyle.zIndex = '50';
+    if (config.header?.style?.sticky) {
+      baseStyle.position = "sticky";
+      baseStyle.top = "0";
+      baseStyle.zIndex = "50";
     }
 
     if (selectedTemplate === "modern") {
-      baseStyle.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
-      baseStyle.borderBottom = 'none';
+      baseStyle.boxShadow = "0 4px 6px -1px rgba(0, 0, 0, 0.1)";
+      baseStyle.borderBottom = "none";
     } else if (selectedTemplate === "minimal") {
-      baseStyle.borderBottom = '1px solid #e5e7eb';
+      baseStyle.borderBottom = "1px solid #e5e7eb";
     } else {
-      baseStyle.borderBottom = '1px solid #e5e7eb';
+      baseStyle.borderBottom = "1px solid #e5e7eb";
     }
 
     return baseStyle;
@@ -71,22 +72,22 @@ export default function Canvas({ selectedTemplate }) {
 
   const getFooterStyle = () => {
     return {
-      backgroundColor: config.footer.style?.backgroundColor || '#111827',
-      color: config.footer.style?.textColor || '#ffffff',
-      padding: config.footer.style?.padding || '3rem 0',
+      backgroundColor: config.footer?.style?.backgroundColor || "#111827",
+      color: config.footer?.style?.textColor || "#ffffff",
+      padding: config.footer?.style?.padding || "3rem 0",
     };
   };
 
   const handleNavClick = (e, url) => {
     e.preventDefault();
-    
-    if (url.startsWith('#')) {
+
+    if (url.startsWith("#")) {
       const sectionId = url.substring(1);
-      const targetSection = sections.find(s => s.id === sectionId);
+      const targetSection = sections.find((s) => s.id === sectionId);
       if (targetSection) {
         const element = document.getElementById(sectionId);
         if (element) {
-          element.scrollIntoView({ behavior: 'smooth' });
+          element.scrollIntoView({ behavior: "smooth" });
         }
       }
     }
@@ -111,9 +112,14 @@ export default function Canvas({ selectedTemplate }) {
           {config.header.props.ctaButton?.text && (
             <a
               href={config.header.props.ctaButton.link}
-              onClick={(e) => handleNavClick(e, config.header.props.ctaButton.link)}
+              onClick={(e) =>
+                handleNavClick(e, config.header.props.ctaButton.link)
+              }
               className="px-6 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5 text-center"
-              style={{ backgroundColor: themeColors?.primary || "#6366f1", color: "#ffffff" }}
+              style={{
+                backgroundColor: themeColors?.primary || "#6366f1",
+                color: "#ffffff",
+              }}
             >
               {config.header.props.ctaButton.text}
             </a>
@@ -133,8 +139,12 @@ export default function Canvas({ selectedTemplate }) {
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between">
             <div className="flex items-center justify-between w-full">
-              {config.header.props.logo ? (
-                <a href="/" className="flex-shrink-0" onClick={(e) => e.preventDefault()}>
+              {config.header?.props.logo ? (
+                <a
+                  href="/"
+                  className="flex-shrink-0"
+                  onClick={(e) => e.preventDefault()}
+                >
                   <img
                     src={config.header.props.logo}
                     alt="Logo"
@@ -142,7 +152,13 @@ export default function Canvas({ selectedTemplate }) {
                   />
                 </a>
               ) : (
-                <a href="/" className="text-lg font-bold text-gray-900" onClick={(e) => e.preventDefault()}>Logo</a>
+                <a
+                  href="/"
+                  className="text-lg font-bold text-gray-900"
+                  onClick={(e) => e.preventDefault()}
+                >
+                  Logo
+                </a>
               )}
 
               <div className="md:hidden">
@@ -153,13 +169,17 @@ export default function Canvas({ selectedTemplate }) {
                   }}
                   className="p-2 text-gray-700 hover:text-gray-900"
                 >
-                  {mobileMenuOpen ? <X className="w-6 h-6" /> : <MenuIcon className="w-6 h-6" />}
+                  {mobileMenuOpen ? (
+                    <X className="w-6 h-6" />
+                  ) : (
+                    <MenuIcon className="w-6 h-6" />
+                  )}
                 </button>
               </div>
             </div>
 
             <nav className="hidden md:flex items-center gap-8">
-              {(config.header.props.menu || []).map((item, idx) => (
+              {(config.header?.props.menu || []).map((item, idx) => (
                 <a
                   key={idx}
                   href={item.url}
@@ -172,23 +192,28 @@ export default function Canvas({ selectedTemplate }) {
             </nav>
 
             <div className="hidden md:flex items-center gap-4">
-              {config.header.props.ctaButton?.text && (
+              {config.header?.props.ctaButton?.text && (
                 <a
-                  href={config.header.props.ctaButton.link}
-                  onClick={(e) => handleNavClick(e, config.header.props.ctaButton.link)}
+                  href={config.header?.props.ctaButton.link}
+                  onClick={(e) =>
+                    handleNavClick(e, config.header?.props.ctaButton.link)
+                  }
                   className="px-6 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-                  style={{ backgroundColor: themeColors?.primary || "#6366f1", color: "#ffffff" }}
+                  style={{
+                    backgroundColor: themeColors?.primary || "#6366f1",
+                    color: "#ffffff",
+                  }}
                 >
                   {config.header.props.ctaButton.text}
                 </a>
               )}
             </div>
           </div>
-          
+
           {renderMobileMenu()}
         </div>
 
-        {sections.length === 0 ? (
+        {sections?.length === 0 ? (
           <div className="h-[500px] flex items-center justify-center bg-gray-50">
             <div className="text-center">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -201,7 +226,9 @@ export default function Canvas({ selectedTemplate }) {
                 Add sections from the library or choose a template
               </p>
               <button
-                onClick={() => window.dispatchEvent(new CustomEvent('open-template-modal'))}
+                onClick={() =>
+                  window.dispatchEvent(new CustomEvent("open-template-modal"))
+                }
                 className="mt-4 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
               >
                 Choose Template
@@ -215,11 +242,11 @@ export default function Canvas({ selectedTemplate }) {
             onDragEnd={handleDragEnd}
           >
             <SortableContext
-              items={sections.map((s) => s.id)}
+              items={sections?.map((s) => s.id)}
               strategy={verticalListSortingStrategy}
             >
               <div>
-                {sections.map((section) => (
+                {sections?.map((section) => (
                   <div key={section.id} id={section.id}>
                     <SortableSection
                       section={section}
@@ -239,8 +266,10 @@ export default function Canvas({ selectedTemplate }) {
           onClick={() => selectFooter()}
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className={`grid gap-8 mb-8 ${config.footer.props.columns?.length === 1 ? 'grid-cols-1' : config.footer.props.columns?.length === 2 ? 'grid-cols-1 md:grid-cols-2' : config.footer.props.columns?.length === 3 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'}`}>
-              {(config.footer.props.columns || []).map((column, idx) => (
+            <div
+              className={`grid gap-8 mb-8 ${config.footer?.props.columns?.length === 1 ? "grid-cols-1" : config.footer?.props.columns?.length === 2 ? "grid-cols-1 md:grid-cols-2" : config.footer?.props.columns?.length === 3 ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : "grid-cols-1 md:grid-cols-2 lg:grid-cols-4"}`}
+            >
+              {(config.footer?.props.columns || []).map((column, idx) => (
                 <div key={idx}>
                   <h4 className="font-semibold mb-4 text-lg">{column.title}</h4>
                   <ul className="space-y-3">
@@ -259,10 +288,15 @@ export default function Canvas({ selectedTemplate }) {
                 </div>
               ))}
             </div>
-            
-            {config.footer.props.copyright && (
-              <div className="pt-8 border-t border-opacity-20 text-center text-sm opacity-70" style={{ borderColor: config.footer.style?.textColor || "#ffffff" }}>
-                {config.footer.props.copyright}
+
+            {config.footer?.props.copyright && (
+              <div
+                className="pt-8 border-t border-opacity-20 text-center text-sm opacity-70"
+                style={{
+                  borderColor: config.footer?.style?.textColor || "#ffffff",
+                }}
+              >
+                {config.footer?.props.copyright}
               </div>
             )}
           </div>

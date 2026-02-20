@@ -67,7 +67,7 @@ export default function WebsiteBuilder() {
         name: "New Theme",
         description: "A new custom theme",
       });
-      
+
       if (newTheme && newTheme.slug) {
         navigate(
           `/website-builder/${selectedWebsite.slug}/theme/${newTheme.slug}/edit`,
@@ -86,7 +86,6 @@ export default function WebsiteBuilder() {
   const handleSetActive = async (themeId) => {
     try {
       await setActiveTheme(themeId, selectedWebsite.id);
-      // Refresh themes to update the is_active status
       await fetchThemes(selectedWebsite.id);
     } catch (error) {
       console.error("Failed to set active theme:", error);
