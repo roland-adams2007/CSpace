@@ -5,6 +5,7 @@ import { useWebsiteStore } from "../store/store";
 import { useThemeStore } from "../store/store";
 import ThemeCard from "../components/ui/theme/ThemeCard";
 import Pagination from "../components/ui/Pagination";
+import ConfirmModal from "../components/ui/modals/ConfirmModal";
 
 export default function WebsiteBuilder() {
   const { selectedWebsite } = useWebsiteStore();
@@ -41,9 +42,8 @@ export default function WebsiteBuilder() {
 
     if (activeFilter === "all") return true;
     if (activeFilter === "active") return theme.is_active === 1;
-    if (activeFilter === "draft") return theme.status === "draft";
-    if (activeFilter === "default") return theme.is_default === 1;
-    if (activeFilter === "system") return !theme.user_id;
+    if (activeFilter === "draft") return false;
+    if (activeFilter === "default") return false;
 
     return true;
   });
@@ -65,7 +65,6 @@ export default function WebsiteBuilder() {
       const newTheme = await createTheme({
         website_id: selectedWebsite.id,
         name: "New Theme",
-        description: "A new custom theme",
       });
 
       if (newTheme && newTheme.slug) {
@@ -110,15 +109,15 @@ export default function WebsiteBuilder() {
   const handleDuplicate = async (themeId) => {
     const originalTheme = themes.find((t) => t.id === themeId);
     if (!originalTheme) return;
-
+    console.log("Duplicating theme:", originalTheme);
+    console.log("themes:", themes);
+    console.log("Original theme Id:", themeId);
     try {
       await createTheme({
         website_id: selectedWebsite.id,
         name: `${originalTheme.name} (Copy)`,
-        description: originalTheme.description,
         config_json: originalTheme.config_json,
       });
-      // Refresh themes list
       await fetchThemes(selectedWebsite.id);
     } catch (error) {
       console.error("Failed to duplicate theme:", error);
@@ -132,21 +131,6 @@ export default function WebsiteBuilder() {
       id: "active",
       label: "Active",
       count: themes.filter((t) => t.is_active === 1).length,
-    },
-    {
-      id: "draft",
-      label: "Draft",
-      count: themes.filter((t) => t.status === "draft").length,
-    },
-    {
-      id: "default",
-      label: "Default",
-      count: themes.filter((t) => t.is_default === 1).length,
-    },
-    {
-      id: "system",
-      label: "System",
-      count: themes.filter((t) => !t.user_id).length,
     },
   ];
 
@@ -296,33 +280,13 @@ export default function WebsiteBuilder() {
         </div>
       )}
 
-      {showDeleteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6 animate-in fade-in slide-in-from-bottom-4 duration-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Delete Theme
-            </h3>
-            <p className="text-sm text-gray-500 mb-6">
-              Are you sure you want to delete this theme? This action cannot be
-              undone.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowDeleteModal(null)}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={showDeleteModal !== null}
+        onClose={() => setShowDeleteModal(null)}
+        onConfirm={confirmDelete}
+        title="Delete Theme"
+        message="Are you sure you want to delete this theme? This action cannot be undone."
+      />
     </>
   );
 }

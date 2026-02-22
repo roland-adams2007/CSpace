@@ -1,4 +1,4 @@
-import { Eye, MoreVertical, Edit3, Star, CheckCircle, FileText, Trash2, Copy } from "lucide-react";
+import { Eye, MoreVertical, Edit3, CheckCircle, Trash2, Copy } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -10,10 +10,8 @@ export default function ThemeCard({ theme, onSetActive, onDelete, onDuplicate, w
   const buttonRef = useRef(null);
   const navigate = useNavigate();
 
-  const isSystem = !theme.user_id;
   const isActive = theme.is_active === 1;
-  const isDefault = theme.is_default === 1;
-  const isDraft = theme.status === "draft";
+  const isTemplate = theme.template_id !== null;
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -54,7 +52,6 @@ export default function ThemeCard({ theme, onSetActive, onDelete, onDuplicate, w
   }, [showMenu]);
 
   const handleEdit = () => {
-    if (isSystem) return;
     navigate(`/website-builder/${websiteSlug}/theme/${theme.slug}/edit`);
   };
 
@@ -63,13 +60,6 @@ export default function ThemeCard({ theme, onSetActive, onDelete, onDuplicate, w
   };
 
   const getStatusBadge = () => {
-    if (isDefault) {
-      return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200">
-          <Star className="w-3 h-3" /> Default
-        </span>
-      );
-    }
     if (isActive) {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 border border-emerald-200">
@@ -77,10 +67,10 @@ export default function ThemeCard({ theme, onSetActive, onDelete, onDuplicate, w
         </span>
       );
     }
-    if (isDraft) {
+    if (isTemplate) {
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200">
-          <FileText className="w-3 h-3" /> Draft
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200">
+          From Template
         </span>
       );
     }
@@ -118,9 +108,9 @@ export default function ThemeCard({ theme, onSetActive, onDelete, onDuplicate, w
       <div className={`h-32 bg-gradient-to-br ${getGradientColor()} relative flex items-center justify-center`}>
         <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap">
           {getStatusBadge()}
-          {isSystem && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-white/20 text-white backdrop-blur-sm">
-              System
+          {theme.template_name && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200">
+              {theme.template_name}
             </span>
           )}
         </div>
@@ -152,6 +142,11 @@ export default function ThemeCard({ theme, onSetActive, onDelete, onDuplicate, w
           <p className="text-sm text-gray-500 mt-0.5 line-clamp-2">
             {theme.description || "No description"}
           </p>
+          {theme.user_name && (
+            <p className="text-xs text-gray-400 mt-1">
+              Created by {theme.user_name}
+            </p>
+          )}
         </div>
 
         <div className="mt-auto">
@@ -162,15 +157,10 @@ export default function ThemeCard({ theme, onSetActive, onDelete, onDuplicate, w
           <div className="flex gap-2 relative">
             <button
               onClick={handleEdit}
-              disabled={isSystem}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                isSystem
-                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  : "bg-indigo-600 text-white hover:bg-indigo-700"
-              }`}
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-all bg-indigo-600 text-white hover:bg-indigo-700"
             >
               <Edit3 className="w-4 h-4" />
-              {isSystem ? "Read Only" : "Edit Theme"}
+              Edit Theme
             </button>
 
             <button
@@ -209,7 +199,7 @@ export default function ThemeCard({ theme, onSetActive, onDelete, onDuplicate, w
                 }}
                 className="w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1 overflow-hidden"
               >
-                {!isActive && !isSystem && (
+                {!isActive && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -235,34 +225,23 @@ export default function ThemeCard({ theme, onSetActive, onDelete, onDuplicate, w
                   Duplicate
                 </button>
 
-                {!isSystem && !isDefault && (
-                  <>
-                    <div className="border-t border-gray-100 my-1" />
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDelete(theme.id);
-                        setShowMenu(false);
-                      }}
-                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Delete Theme
-                    </button>
-                  </>
-                )}
+                <div className="border-t border-gray-100 my-1" />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(theme.id);
+                    setShowMenu(false);
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center transition-colors"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Theme
+                </button>
               </div>
             )}
           </div>
         </div>
       </div>
-
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: scale(0.95); }
-          to { opacity: 1; transform: scale(1); }
-        }
-      `}</style>
     </div>
   );
 }

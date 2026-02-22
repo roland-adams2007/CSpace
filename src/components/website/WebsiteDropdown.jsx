@@ -11,7 +11,7 @@ export default function WebsiteDropdown({ dropdownOpen, setDropdownOpen }) {
     loading,
   } = useWebsiteStore();
 
-  console.log(websites);
+
 
   const handleSelectWebsite = (website) => {
     setSelectedWebsite(website);

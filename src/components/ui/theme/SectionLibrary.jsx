@@ -1,65 +1,63 @@
 import { SECTION_LIBRARY } from "../../../utils/sectionLibrary";
 import * as LucideIcons from "lucide-react";
 
+const CATEGORIES = [
+  { name: "Hero", types: ["hero"], icon: "layout" },
+  { name: "Features & Benefits", types: ["features", "benefits"], icon: "zap" },
+  { name: "Stats & Process", types: ["stats", "process"], icon: "bar-chart" },
+  { name: "Content & Media", types: ["content", "gallery"], icon: "image" },
+  { name: "Social Proof", types: ["testimonials", "team", "case-studies"], icon: "users" },
+  { name: "Trust & Logos", types: ["logos", "trust"], icon: "shield" },
+  { name: "Conversion", types: ["cta", "pricing", "contact", "newsletter"], icon: "target" },
+  { name: "Information", types: ["faq"], icon: "help-circle" },
+];
+
+const getIcon = (iconName) => {
+  if (!iconName) return LucideIcons.Box;
+  const pascal = iconName
+    .split("-")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join("");
+  return LucideIcons[pascal] || LucideIcons.Box;
+};
+
 export default function SectionLibrary({ onAddSection }) {
-  const getIcon = (iconName) => {
-    const IconComponent = LucideIcons[
-      iconName.split("-").map((word, i) =>
-        i === 0 ? word : word.charAt(0).toUpperCase() + word.slice(1)
-      ).join("")
-    ];
-    return IconComponent || LucideIcons.Box;
-  };
-
-  const categories = [
-    { name: "Hero Sections", types: ["hero"], icon: "layout" },
-    { name: "Features & Benefits", types: ["features", "benefits"], icon: "zap" },
-    { name: "Stats & Numbers", types: ["stats"], icon: "bar-chart" },
-    { name: "Process", types: ["process"], icon: "clock" },
-    { name: "Content & Media", types: ["content", "gallery"], icon: "image" },
-    { name: "Social Proof", types: ["testimonials", "team", "case-studies"], icon: "users" },
-    { name: "Trust & Logos", types: ["logos", "trust"], icon: "shield" },
-    { name: "Conversion", types: ["cta", "pricing", "contact", "newsletter"], icon: "target" },
-    { name: "Information", types: ["faq"], icon: "help-circle" },
-  ];
-
   return (
     <div className="h-full flex flex-col bg-white border-r border-gray-200">
-      <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+      {/* Header */}
+      <div className="p-5 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 bg-indigo-100 rounded-lg flex items-center justify-center">
             <LucideIcons.Plus className="w-5 h-5 text-indigo-600" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-gray-900">
-              Add Sections
-            </h3>
-            <p className="text-xs text-gray-600">Click to add to canvas</p>
+            <h3 className="text-sm font-bold text-gray-900">Add Sections</h3>
+            <p className="text-xs text-gray-500">Click to add to canvas</p>
           </div>
         </div>
       </div>
-      
-      <div className="flex-1 overflow-y-auto p-4 space-y-8">
-        {categories.map((category) => {
+
+      {/* Section list */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+        {CATEGORIES.map((cat) => {
           const items = SECTION_LIBRARY.filter((item) =>
-            category.types.includes(item.type)
+            cat.types.includes(item.type)
           );
           if (items.length === 0) return null;
-
-          const CategoryIcon = getIcon(category.icon);
+          const CatIcon = getIcon(cat.icon);
 
           return (
-            <div key={category.name}>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-6 h-6 bg-gray-100 rounded-md flex items-center justify-center">
-                  <CategoryIcon className="w-4 h-4 text-gray-600" />
+            <div key={cat.name}>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-5 h-5 bg-gray-100 rounded flex items-center justify-center">
+                  <CatIcon className="w-3.5 h-3.5 text-gray-500" />
                 </div>
-                <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  {category.name}
-                </h4>
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                  {cat.name}
+                </span>
               </div>
-              
-              <div className="space-y-3">
+
+              <div className="space-y-2">
                 {items.map((item) => {
                   const Icon = getIcon(item.icon);
                   return (
@@ -68,21 +66,19 @@ export default function SectionLibrary({ onAddSection }) {
                       onClick={() => onAddSection(item)}
                       className="w-full group relative overflow-hidden"
                     >
-                      <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-10 transition-opacity rounded-xl"></div>
-                      <div className="relative flex items-center gap-3 p-4 rounded-xl border-2 border-gray-200 hover:border-indigo-400 hover:shadow-lg transition-all bg-white">
-                        <div className="w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center group-hover:from-indigo-100 group-hover:to-purple-100 transition-all flex-shrink-0 shadow-sm">
-                          <Icon className="w-6 h-6 text-gray-600 group-hover:text-indigo-600 transition-colors" />
+                      <div className="flex items-center gap-3 p-3 rounded-xl border-2 border-gray-100 hover:border-indigo-400 hover:shadow-md transition-all bg-white">
+                        <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center group-hover:bg-indigo-50 transition-colors flex-shrink-0">
+                          <Icon className="w-5 h-5 text-gray-500 group-hover:text-indigo-600 transition-colors" />
                         </div>
                         <div className="flex-1 text-left min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-indigo-600 transition-colors">
+                          <p className="text-sm font-semibold text-gray-800 group-hover:text-indigo-700 transition-colors">
                             {item.name}
                           </p>
-                          <p className="text-xs text-gray-500 capitalize">
+                          <p className="text-xs text-gray-400 capitalize">
                             {item.type} section
-                            {item.defaultProps?.carousel?.enabled && " • Carousel"}
                           </p>
                         </div>
-                        <LucideIcons.Plus className="w-5 h-5 text-gray-400 group-hover:text-indigo-600 transition-colors flex-shrink-0" />
+                        <LucideIcons.Plus className="w-4 h-4 text-gray-300 group-hover:text-indigo-500 transition-colors flex-shrink-0" />
                       </div>
                     </button>
                   );
@@ -92,16 +88,15 @@ export default function SectionLibrary({ onAddSection }) {
           );
         })}
 
-        <div className="pt-6 pb-4">
+        {/* Tip */}
+        <div className="pb-4">
           <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-100">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <LucideIcons.Lightbulb className="w-4 h-4 text-indigo-600" />
-              </div>
+            <div className="flex items-start gap-2">
+              <LucideIcons.Lightbulb className="w-4 h-4 text-indigo-500 mt-0.5 flex-shrink-0" />
               <div>
-                <h5 className="text-xs font-bold text-gray-900 mb-1">Pro Tip</h5>
-                <p className="text-xs text-gray-600 leading-relaxed">
-                  Start with a hero section, add features, build trust with stats and testimonials, then finish with a strong call-to-action for best results.
+                <p className="text-xs font-bold text-gray-800 mb-0.5">Pro Tip</p>
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  Start with a Hero, add Features, build trust with Stats & Testimonials, then close with a strong CTA. Use the Properties panel to switch layout variants.
                 </p>
               </div>
             </div>

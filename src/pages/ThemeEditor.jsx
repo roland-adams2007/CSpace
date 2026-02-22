@@ -6,14 +6,9 @@ import EditorHeader from "../components/ui/theme/EditorHeader";
 import TemplateModal from "../components/ui/modals/theme/TemplateModal";
 import SettingsModal from "../components/ui/modals/theme/SettingsModal";
 import SkeletonLoader from "../components/ui/theme/SkeletonLoader";
-import { useParams, useSearchParams } from "react-router-dom";
-import { useEffect, useState } from "react";
 
 export default function ThemeEditor() {
   const { useThemeEditor } = useThemeStore();
-  const { websiteSlug, themeSlug } = useParams();
-  const [searchParams] = useSearchParams();
-  const [oldSlug, setOldSlug] = useState("");
 
   const {
     theme,
@@ -27,6 +22,7 @@ export default function ThemeEditor() {
     showTemplateModal,
     canUndo,
     canRedo,
+    templates,
     setShowSettings,
     setShowTemplateModal,
     handleSave,
@@ -79,6 +75,7 @@ export default function ThemeEditor() {
         onClose={() => setShowTemplateModal(false)}
         onApplyTemplate={applyTemplate}
         selectedTemplate={selectedTemplate}
+        templates={templates}
         currentSectionsCount={config.layout?.sections?.length}
       />
 

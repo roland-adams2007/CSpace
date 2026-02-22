@@ -1,26 +1,7 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { useEditorStore } from "../../../../store/store";
 import { useNavigate, useParams } from "react-router-dom";
-
-function generateSlugVariants(name) {
-  if (!name) return [];
-  const base = name
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/[\s-]+/g, "-")
-    .slice(0, 30);
-  const words = base.split("-").slice(0, 3);
-  return [
-    ...new Set([
-      words.join("-"),
-      words.join("_"),
-      words[0],
-      words.slice(0, 2).join("-"),
-    ]),
-  ].filter(Boolean);
-}
 
 export default function SettingsModal({
   isOpen,
@@ -29,103 +10,26 @@ export default function SettingsModal({
   onThemeChange,
   config,
   onSave,
-  originalSlug: propOriginalSlug,
 }) {
   const { websiteSlug } = useParams();
   const navigate = useNavigate();
 
-  const [localState, setLocalState] = useState({
-    slug: "",
-    originalSlug: "",
-  });
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [slugSuggestions, setSlugSuggestions] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
-  const dropdownRef = useRef(null);
-
-  useEffect(() => {
-    if (isOpen && theme?.slug) {
-      setLocalState({
-        slug: theme.slug,
-        originalSlug: propOriginalSlug || theme.slug,
-      });
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    setSlugSuggestions(generateSlugVariants(theme?.name));
-  }, [theme?.name]);
-
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setShowDropdown(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   if (!isOpen) return null;
 
-  const handleSlugChange = (value) => {
-    const sanitized = value
-      .toLowerCase()
-      .replace(/[^a-z0-9-_]/g, "")
-      .replace(/\s+/g, "-");
-
-    setLocalState((prev) => ({
-      ...prev,
-      slug: sanitized,
-    }));
-
-    const timeoutId = setTimeout(() => {
-      onThemeChange({ ...theme, slug: sanitized });
-    }, 300);
-
-    return () => clearTimeout(timeoutId);
-  };
-
-  const handleSuggestionClick = (slug) => {
-    setLocalState((prev) => ({
-      ...prev,
-      slug,
-    }));
-    onThemeChange({ ...theme, slug });
-    setShowDropdown(false);
-  };
-
   const handleSaveAndClose = async () => {
-    if (
-      localState.slug !== localState.originalSlug &&
-      localState.originalSlug
-    ) {
-      setIsSaving(true);
-      try {
-        if (theme.slug !== localState.slug) {
-          onThemeChange({ ...theme, slug: localState.slug });
-        }
-        await onSave();
-        navigate(
-          `/website-builder/${websiteSlug}/theme/${localState.slug}/edit`,
-        );
-
-        onClose();
-      } catch (error) {
-        console.error("Failed to save theme:", error);
-        alert("Failed to save theme. Please try again.");
-      } finally {
-        setIsSaving(false);
-      }
-    } else {
+    setIsSaving(true);
+    try {
       await onSave();
       onClose();
+    } catch (error) {
+      console.error("Failed to save theme:", error);
+      alert("Failed to save theme. Please try again.");
+    } finally {
+      setIsSaving(false);
     }
   };
-
-  const filteredSuggestions = slugSuggestions.filter(
-    (s) => !localState.slug || s.includes(localState.slug),
-  );
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -159,41 +63,6 @@ export default function SettingsModal({
                 disabled={isSaving}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
-            </div>
-
-            <div ref={dropdownRef} className="relative">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Slug
-              </label>
-              <input
-                type="text"
-                value={localState.slug}
-                onChange={(e) => handleSlugChange(e.target.value)}
-                onFocus={() => setShowDropdown(true)}
-                placeholder="e.g. my-theme"
-                disabled={isSaving}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-              />
-              <p className="mt-1 text-xs text-gray-400">
-                Only lowercase letters, numbers, hyphens, and underscores.
-              </p>
-              {showDropdown && filteredSuggestions.length > 0 && !isSaving && (
-                <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
-                  {filteredSuggestions.map((s) => (
-                    <li
-                      key={s}
-                      onMouseDown={() => handleSuggestionClick(s)}
-                      className={`px-4 py-2 text-sm cursor-pointer hover:bg-indigo-50 hover:text-indigo-700 transition-colors ${
-                        localState.slug === s
-                          ? "bg-indigo-50 text-indigo-700 font-medium"
-                          : "text-gray-700"
-                      }`}
-                    >
-                      {s}
-                    </li>
-                  ))}
-                </ul>
-              )}
             </div>
 
             <div className="pt-4 border-t border-gray-200">

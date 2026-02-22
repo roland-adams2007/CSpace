@@ -2,7 +2,7 @@ import { create } from "zustand";
 
 export const useEditorStore = create((set, get) => ({
   config: {
-    template: "classic",
+    template_name: null,
     previewMode: false,
     header: {
       type: "default",
@@ -145,17 +145,17 @@ export const useEditorStore = create((set, get) => ({
     set({ selectedSection: sectionId, selectedBlock: blockId, selectedHeader: false, selectedFooter: false });
   },
 
-  setTemplate: (template) => {
+  setTemplate: (templateName) => {
     set((state) => ({
       config: {
         ...state.config,
-        template,
+        template_name: templateName,
       },
-      isDirty: true, // Fix: Set isDirty to true when template changes
+      isDirty: true,
     }));
     get().addToHistory({
       ...get().config,
-      template,
+      template_name: templateName,
     });
   },
 
