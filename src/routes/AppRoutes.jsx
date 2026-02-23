@@ -6,6 +6,7 @@ import AppLoader from "../components/ui/loaders/AppLoader";
 import PublicRoute from "./PublicRoute";
 import ProtectedRoute from "./ProtectedRoute";
 import Dashboard from "../pages/Dashboard";
+import Preview from "../pages/Preview";
 
 const Login = lazy(() => import("../components/auth/Login"));
 const Register = lazy(() => import("../components/auth/Register"));
@@ -37,10 +38,14 @@ export default function AppRoutes() {
             <Route path="/billing" element={<>Billing</>} />
             <Route path="/settings" element={<>Settings</>} />
           </Route>
-          
-          <Route path="/website-builder/:websiteSlug/theme/:themeSlug/edit" element={<ThemeEditor />} />
+
+          <Route
+            path="/website-builder/:websiteSlug/theme/:themeSlug/edit"
+            element={<ThemeEditor />}
+          />
         </Route>
 
+        <Route path="/t/:themeSlug" element={<Preview />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
