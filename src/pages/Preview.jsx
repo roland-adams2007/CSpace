@@ -1,41 +1,139 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { useThemeStore } from "../store/store";
+import { useWebsiteStore } from "../store/store";
 import SectionRenderer from "../components/ui/theme/SectionRenderer";
 
 export default function Preview() {
-  const { themeSlug } = useParams();
-  const { getTheme } = useThemeStore();
+  const { themeSlug, websiteSlug } = useParams();
+  const { getTheme, fetchThemes } = useThemeStore();
+  const { selectedWebsite, fetchWebsites, setSelectedWebsite, websites } = useWebsiteStore();
 
   const [theme, setTheme] = useState(null);
   const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Use refs to track if we've already fetched
+  const hasFetchedWebsites = useRef(false);
+  const hasFetchedTheme = useRef(false);
+  const currentSlug = useRef(null);
 
   const isPreviewMode =
     typeof window !== "undefined" &&
     new URLSearchParams(window.location.search).get("preview") === "true";
 
+  // Handle website context - only fetch if needed
   useEffect(() => {
-    if (!themeSlug) return;
-    loadTheme();
-  }, [themeSlug]);
+    const initWebsite = async () => {
+      // If we have websiteSlug in URL
+      if (websiteSlug) {
+        // First check if we already have websites loaded
+        let availableWebsites = websites;
+        
+        // Only fetch if we don't have websites and haven't tried before
+        if (availableWebsites.length === 0 && !hasFetchedWebsites.current) {
+          hasFetchedWebsites.current = true;
+          try {
+            availableWebsites = await fetchWebsites();
+          } catch (err) {
+            console.error("Failed to load websites:", err);
+            setError("Failed to load website");
+            setLoading(false);
+            return;
+          }
+        }
+        
+        // Find the website with matching slug
+        const website = availableWebsites.find(w => w.slug === websiteSlug);
+        if (website) {
+          // Check if website is published (if not in preview mode)
+          if (!isPreviewMode && website.status !== 'published') {
+            setError("This website is not published and cannot be viewed");
+            setLoading(false);
+            return;
+          }
+          
+          // Only set if it's different from current selection
+          if (selectedWebsite?.id !== website.id) {
+            setSelectedWebsite(website);
+          }
+        } else {
+          setError("Website not found");
+          setLoading(false);
+        }
+      }
+    };
 
-  const loadTheme = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const themeData = await getTheme(themeSlug);
-      setTheme(themeData);
-      let configData = themeData.config_json;
-      if (typeof configData === "string") configData = JSON.parse(configData);
-      setConfig(configData);
-    } catch (err) {
-      setError(err?.response?.data?.message || "Failed to load theme preview.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    initWebsite();
+  }, [websiteSlug]); // Remove selectedWebsite and websites from dependencies
+
+  // Load theme - only when we have the necessary context
+  useEffect(() => {
+    // Don't proceed if we don't have the right context yet
+    if (websiteSlug && !selectedWebsite) return;
+    if (!themeSlug && !websiteSlug) return;
+    
+    // Check if we're already loading this slug
+    const slugToLoad = themeSlug || websiteSlug;
+    if (currentSlug.current === slugToLoad && hasFetchedTheme.current) return;
+    
+    currentSlug.current = slugToLoad;
+    
+    const loadContent = async () => {
+      setLoading(true);
+      setError(null);
+      hasFetchedTheme.current = true;
+      
+      try {
+        let themeData = null;
+
+        // If we have a themeSlug, load that specific theme
+        if (themeSlug) {
+          themeData = await getTheme(themeSlug);
+        } 
+        // If we only have websiteSlug, load the active theme for that website
+        else if (websiteSlug && selectedWebsite) {
+          // Check again if website is published (for non-preview mode)
+          if (!isPreviewMode && selectedWebsite.status !== 'published') {
+            setError("This website is not published and cannot be viewed");
+            setLoading(false);
+            return;
+          }
+          
+          // Fetch themes for this website (only if we don't have them cached)
+          const themes = await fetchThemes(selectedWebsite.id);
+          const activeTheme = themes.find(t => t.is_active === 1 || t.is_active === true);
+          
+          if (activeTheme) {
+            // Check if we already have this theme loaded
+            if (theme?.id !== activeTheme.id) {
+              themeData = await getTheme(activeTheme.slug);
+            } else {
+              themeData = theme;
+            }
+          } else {
+            setError("No active theme found for this website");
+            setLoading(false);
+            return;
+          }
+        }
+
+        if (themeData) {
+          setTheme(themeData);
+          let configData = themeData.config_json;
+          if (typeof configData === "string") configData = JSON.parse(configData);
+          setConfig(configData);
+        }
+      } catch (err) {
+        setError(err?.response?.data?.message || "Failed to load preview.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadContent();
+  }, [themeSlug, websiteSlug, selectedWebsite]);
 
   if (loading) {
     return (
@@ -65,15 +163,25 @@ export default function Preview() {
           </svg>
         </div>
         <h2 className="text-lg font-semibold text-gray-900">
-          Preview Unavailable
+          {error.includes('published') ? 'Website Not Published' : 'Preview Unavailable'}
         </h2>
         <p className="text-sm text-gray-500 max-w-sm">{error}</p>
-        <button
-          onClick={loadTheme}
-          className="mt-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
-        >
-          Try Again
-        </button>
+        {error.includes('published') && isPreviewMode ? (
+          <p className="text-xs text-amber-600 mt-1">
+            You're in preview mode, but this website is not published yet.
+          </p>
+        ) : (
+          <button
+            onClick={() => {
+              hasFetchedWebsites.current = false;
+              hasFetchedTheme.current = false;
+              window.location.reload();
+            }}
+            className="mt-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            Try Again
+          </button>
+        )}
       </div>
     );
   }
@@ -89,6 +197,16 @@ export default function Preview() {
   const bodyFont = fonts.body || "Inter";
   const googleFontsUrl = buildGoogleFontsUrl([headingFont, bodyFont]);
 
+  const previewInfo = {
+    type: themeSlug ? 'theme' : 'website',
+    name: theme?.name || selectedWebsite?.name,
+    slug: themeSlug || websiteSlug,
+    websiteName: selectedWebsite?.name,
+    websiteStatus: selectedWebsite?.status,
+    themeName: theme?.name,
+    isPreviewMode
+  };
+
   return (
     <>
       {googleFontsUrl && <link rel="stylesheet" href={googleFontsUrl} />}
@@ -103,29 +221,27 @@ export default function Preview() {
       {loader?.enabled && <StartupLoader loader={loader} />}
 
       {isPreviewMode && (
-        <PreviewBanner themeName={theme?.name} slug={themeSlug} />
+        <PreviewBanner 
+          previewInfo={previewInfo}
+        />
       )}
 
-      {/*
-        CRITICAL: No wrapper div around sections.
-        sticky position: sticky on the header only works when it is a direct
-        child of the document scroll container (body / html).
-        Any intermediate div with overflow, transform, or its own height
-        will break sticky. So we render sections as siblings at the top level.
-      */}
+      {/* Show a subtle draft indicator if viewing an unpublished website in preview mode */}
+      {!isPreviewMode && selectedWebsite?.status !== 'published' && (
+        <div className="fixed top-0 left-0 right-0 z-[9999] bg-amber-500 text-white text-center py-1 text-xs">
+          This website is in draft mode. Only published websites are visible to the public.
+        </div>
+      )}
+
       {sections.length === 0 ? (
         <EmptyState />
       ) : (
         sections.map((section) => (
-          // The id goes on the SectionRenderer's own root element via a wrapper
-          // that does NOT interfere with sticky. We use a fragment-like approach:
-          // give each section an anchor target via an invisible zero-height div
-          // placed just before it, so #section-id scroll-links still work.
           <SectionAnchor key={section.id} id={section.id}>
             <SectionRenderer
               section={section}
               themeColors={themeColors}
-              isPreview={true}
+              isPreview={isPreviewMode}
             />
           </SectionAnchor>
         ))
@@ -134,49 +250,78 @@ export default function Preview() {
   );
 }
 
-/**
- * Renders an invisible anchor point for #hash navigation,
- * then the section content as a sibling — NOT a child.
- * This preserves sticky positioning on headers.
- */
+// Helper components remain the same...
 function SectionAnchor({ id, children }) {
   const isHeader = id?.startsWith("header") || false;
-
-  // For the header section, render with no wrapper at all so sticky works.
   if (isHeader) {
     return children;
   }
-
-  // For all other sections, a normal div wrapper is fine.
   return <div id={id}>{children}</div>;
 }
 
-function PreviewBanner({ themeName, slug }) {
+function PreviewBanner({ previewInfo }) {
   const [visible, setVisible] = useState(true);
   if (!visible) return null;
+  
+  const { type, name, slug, websiteName, websiteStatus, themeName, isPreviewMode } = previewInfo;
+  
+  // Determine banner color based on status
+  const bannerColor = websiteStatus === 'published' ? "#4f46e5" : "#f59e0b";
+  
   return (
     <div
       className="fixed bottom-0 left-0 right-0 z-[9999] flex items-center justify-between px-5 py-2.5 text-white text-sm shadow-lg"
-      style={{ backgroundColor: "#4f46e5" }}
+      style={{ backgroundColor: bannerColor }}
     >
       <div className="flex items-center gap-2.5">
         <span className="w-2 h-2 rounded-full bg-yellow-300 animate-pulse flex-shrink-0" />
         <span className="font-semibold tracking-tight">Preview Mode</span>
-        {themeName && (
+        
+        {/* Status indicator */}
+        {websiteStatus && (
+          <>
+            <span className="opacity-40 select-none">·</span>
+            <span className={`text-xs px-1.5 py-0.5 rounded ${
+              websiteStatus === 'published' ? 'bg-green-500' : 'bg-amber-500'
+            }`}>
+              {websiteStatus}
+            </span>
+          </>
+        )}
+        
+        {type === 'theme' && themeName && (
           <>
             <span className="opacity-40 select-none">·</span>
             <span className="opacity-85 truncate max-w-[200px]">
-              {themeName}
+              Theme: {themeName}
+            </span>
+          </>
+        )}
+        {websiteName && (
+          <>
+            <span className="opacity-40 select-none">·</span>
+            <span className="opacity-60 truncate max-w-[150px] text-xs">
+              Site: {websiteName}
+            </span>
+          </>
+        )}
+        {type === 'website' && name && !themeName && (
+          <>
+            <span className="opacity-40 select-none">·</span>
+            <span className="opacity-85 truncate max-w-[200px]">
+              {name}
             </span>
           </>
         )}
       </div>
       <div className="flex items-center gap-3">
-        {slug && (
-          <span className="hidden sm:inline text-xs opacity-60 font-mono">
-            /t/{slug}
-          </span>
-        )}
+        <div className="hidden sm:flex items-center gap-2 text-xs opacity-60">
+          {slug && (
+            <span className="font-mono">
+              {type === 'theme' ? '/t/' : '/c/'}{slug}
+            </span>
+          )}
+        </div>
         <button
           onClick={() => setVisible(false)}
           className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-white/20 transition-colors"

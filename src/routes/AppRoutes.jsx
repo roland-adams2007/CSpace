@@ -18,7 +18,7 @@ export default function AppRoutes() {
   return (
     <Suspense fallback={<AppLoader />}>
       <Routes>
-        <Route path="/" element={<Navigate to="/dashboard" />} />
+        <Route path="/" element={<>Home Page</>} />
 
         <Route element={<PublicRoute />}>
           <Route path="/login" element={<Login />} />
@@ -46,6 +46,7 @@ export default function AppRoutes() {
         </Route>
 
         <Route path="/t/:themeSlug" element={<Preview />} />
+        <Route path="/c/:websiteSlug" element={<Preview />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
