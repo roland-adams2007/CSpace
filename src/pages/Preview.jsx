@@ -1,139 +1,127 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { useThemeStore } from "../store/store";
-import { useWebsiteStore } from "../store/store";
+import axiosInstance from "./../api/axiosInstance";
 import SectionRenderer from "../components/ui/theme/SectionRenderer";
+import NotFound from "../components/errors/NotFound";
 
 export default function Preview() {
   const { themeSlug, websiteSlug } = useParams();
-  const { getTheme, fetchThemes } = useThemeStore();
-  const { selectedWebsite, fetchWebsites, setSelectedWebsite, websites } = useWebsiteStore();
 
   const [theme, setTheme] = useState(null);
   const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+  const [websiteInfo, setWebsiteInfo] = useState(null);
+  const [notFound, setNotFound] = useState(false);
+
   // Use refs to track if we've already fetched
-  const hasFetchedWebsites = useRef(false);
-  const hasFetchedTheme = useRef(false);
+  const hasFetched = useRef(false);
   const currentSlug = useRef(null);
 
   const isPreviewMode =
     typeof window !== "undefined" &&
     new URLSearchParams(window.location.search).get("preview") === "true";
 
-  // Handle website context - only fetch if needed
+  // Load content based on route
   useEffect(() => {
-    const initWebsite = async () => {
-      // If we have websiteSlug in URL
-      if (websiteSlug) {
-        // First check if we already have websites loaded
-        let availableWebsites = websites;
-        
-        // Only fetch if we don't have websites and haven't tried before
-        if (availableWebsites.length === 0 && !hasFetchedWebsites.current) {
-          hasFetchedWebsites.current = true;
-          try {
-            availableWebsites = await fetchWebsites();
-          } catch (err) {
-            console.error("Failed to load websites:", err);
-            setError("Failed to load website");
-            setLoading(false);
-            return;
-          }
-        }
-        
-        // Find the website with matching slug
-        const website = availableWebsites.find(w => w.slug === websiteSlug);
-        if (website) {
-          // Check if website is published (if not in preview mode)
-          if (!isPreviewMode && website.status !== 'published') {
-            setError("This website is not published and cannot be viewed");
-            setLoading(false);
-            return;
-          }
-          
-          // Only set if it's different from current selection
-          if (selectedWebsite?.id !== website.id) {
-            setSelectedWebsite(website);
-          }
-        } else {
-          setError("Website not found");
-          setLoading(false);
-        }
-      }
-    };
-
-    initWebsite();
-  }, [websiteSlug]); // Remove selectedWebsite and websites from dependencies
-
-  // Load theme - only when we have the necessary context
-  useEffect(() => {
-    // Don't proceed if we don't have the right context yet
-    if (websiteSlug && !selectedWebsite) return;
-    if (!themeSlug && !websiteSlug) return;
-    
-    // Check if we're already loading this slug
-    const slugToLoad = themeSlug || websiteSlug;
-    if (currentSlug.current === slugToLoad && hasFetchedTheme.current) return;
-    
-    currentSlug.current = slugToLoad;
-    
     const loadContent = async () => {
+      const slugToLoad = themeSlug || websiteSlug;
+
+      // Prevent double fetching
+      if (currentSlug.current === slugToLoad && hasFetched.current) return;
+
+      currentSlug.current = slugToLoad;
       setLoading(true);
       setError(null);
-      hasFetchedTheme.current = true;
-      
+      setNotFound(false);
+      hasFetched.current = true;
+
       try {
         let themeData = null;
+        let websiteData = null;
 
-        // If we have a themeSlug, load that specific theme
+        // Case 1: Specific theme preview (/t/:themeSlug)
         if (themeSlug) {
-          themeData = await getTheme(themeSlug);
-        } 
-        // If we only have websiteSlug, load the active theme for that website
-        else if (websiteSlug && selectedWebsite) {
-          // Check again if website is published (for non-preview mode)
-          if (!isPreviewMode && selectedWebsite.status !== 'published') {
-            setError("This website is not published and cannot be viewed");
-            setLoading(false);
-            return;
-          }
-          
-          // Fetch themes for this website (only if we don't have them cached)
-          const themes = await fetchThemes(selectedWebsite.id);
-          const activeTheme = themes.find(t => t.is_active === 1 || t.is_active === true);
-          
-          if (activeTheme) {
-            // Check if we already have this theme loaded
-            if (theme?.id !== activeTheme.id) {
-              themeData = await getTheme(activeTheme.slug);
-            } else {
-              themeData = theme;
+          // Public endpoint for getting a theme by slug
+          const response = await axiosInstance.get(
+            `/public/themes/${themeSlug}${isPreviewMode ? "?preview=true" : ""}`,
+          );
+          themeData = response.data.data.theme;
+
+          // If we have theme data, we might want to get its website info
+          if (themeData && themeData.website_id) {
+            try {
+              const websiteResponse = await axiosInstance.get(
+                `/public/websites/${themeData.website_id}${isPreviewMode ? "?preview=true" : ""}`,
+              );
+              websiteData = websiteResponse.data.data.website;
+              setWebsiteInfo(websiteData);
+            } catch (websiteErr) {
+              console.error(
+                "Failed to fetch website info for theme:",
+                websiteErr,
+              );
             }
-          } else {
-            setError("No active theme found for this website");
+          }
+        }
+        // Case 2: Website preview (/c/:websiteSlug)
+        else if (websiteSlug) {
+          // First, get website info to check if it's published and get active theme
+          // Public endpoint for getting website by slug
+          const websiteResponse = await axiosInstance.get(
+            `/public/websites/${websiteSlug}${isPreviewMode ? "?preview=true" : ""}`,
+          );
+          websiteData = websiteResponse.data.data.website;
+          setWebsiteInfo(websiteData);
+
+          // Check if website is published (for non-preview mode)
+          if (!isPreviewMode && websiteData.is_published !== true) {
+            setNotFound(true);
+            setError("This website is not published");
             setLoading(false);
             return;
           }
+
+          // Get the active theme for this website
+          // Public endpoint for getting active theme by website slug
+          const themeResponse = await axiosInstance.get(
+            `/public/websites/${websiteSlug}/active-theme${isPreviewMode ? "?preview=true" : ""}`,
+          );
+          themeData = themeResponse.data.data.theme;
         }
 
         if (themeData) {
           setTheme(themeData);
           let configData = themeData.config_json;
-          if (typeof configData === "string") configData = JSON.parse(configData);
+          if (typeof configData === "string")
+            configData = JSON.parse(configData);
           setConfig(configData);
+        } else {
+          setNotFound(true);
+          setError(themeSlug ? "Theme not found" : "Website not found");
         }
       } catch (err) {
-        setError(err?.response?.data?.message || "Failed to load preview.");
+        console.error("Failed to load preview:", err);
+
+        // Handle different error statuses
+        if (err.response?.status === 404) {
+          setNotFound(true);
+          setError(themeSlug ? "Theme not found" : "Website not found");
+        } else if (err.response?.status === 403) {
+          setNotFound(true);
+          setError("This website is private or not published");
+        } else {
+          setError(err?.response?.data?.message || "Failed to load preview.");
+        }
       } finally {
         setLoading(false);
       }
     };
 
-    loadContent();
-  }, [themeSlug, websiteSlug, selectedWebsite]);
+    if (themeSlug || websiteSlug) {
+      loadContent();
+    }
+  }, [themeSlug, websiteSlug, isPreviewMode]);
 
   if (loading) {
     return (
@@ -142,6 +130,16 @@ export default function Preview() {
         <p className="text-sm text-gray-500 font-medium">Loading preview…</p>
       </div>
     );
+  }
+
+  // Show NotFound component for 404 errors or unpublished/private content
+  if (notFound) {
+    const errorMessage =
+      error || (themeSlug ? "Theme not found" : "Website not found");
+    const isPrivate =
+      error?.includes("private") || error?.includes("not published");
+
+    return <NotFound />;
   }
 
   if (error) {
@@ -163,18 +161,19 @@ export default function Preview() {
           </svg>
         </div>
         <h2 className="text-lg font-semibold text-gray-900">
-          {error.includes('published') ? 'Website Not Published' : 'Preview Unavailable'}
+          {error.includes("published")
+            ? "Website Not Published"
+            : "Preview Unavailable"}
         </h2>
         <p className="text-sm text-gray-500 max-w-sm">{error}</p>
-        {error.includes('published') && isPreviewMode ? (
+        {error.includes("published") && isPreviewMode ? (
           <p className="text-xs text-amber-600 mt-1">
             You're in preview mode, but this website is not published yet.
           </p>
         ) : (
           <button
             onClick={() => {
-              hasFetchedWebsites.current = false;
-              hasFetchedTheme.current = false;
+              hasFetched.current = false;
               window.location.reload();
             }}
             className="mt-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
@@ -197,14 +196,22 @@ export default function Preview() {
   const bodyFont = fonts.body || "Inter";
   const googleFontsUrl = buildGoogleFontsUrl([headingFont, bodyFont]);
 
+  // Determine if website is published
+  const isPublished =
+    websiteInfo?.is_published === true || websiteInfo?.is_published === 1;
+
+  // Determine if theme is active
+  const isActive = theme?.is_active === true || theme?.is_active === 1;
+
   const previewInfo = {
-    type: themeSlug ? 'theme' : 'website',
-    name: theme?.name || selectedWebsite?.name,
+    type: themeSlug ? "theme" : "website",
+    name: theme?.name || websiteInfo?.name,
     slug: themeSlug || websiteSlug,
-    websiteName: selectedWebsite?.name,
-    websiteStatus: selectedWebsite?.status,
+    websiteName: websiteInfo?.name,
+    isPublished: isPublished,
+    isActive: isActive,
     themeName: theme?.name,
-    isPreviewMode
+    isPreviewMode,
   };
 
   return (
@@ -220,16 +227,20 @@ export default function Preview() {
 
       {loader?.enabled && <StartupLoader loader={loader} />}
 
-      {isPreviewMode && (
-        <PreviewBanner 
-          previewInfo={previewInfo}
-        />
+      {isPreviewMode && <PreviewBanner previewInfo={previewInfo} />}
+
+      {/* Show warning if viewing unpublished website without preview mode */}
+      {!isPreviewMode && websiteInfo && !isPublished && (
+        <div className="fixed top-0 left-0 right-0 z-[9999] bg-amber-500 text-white text-center py-1 text-xs">
+          This website is in draft mode. Only published websites are visible to
+          the public.
+        </div>
       )}
 
-      {/* Show a subtle draft indicator if viewing an unpublished website in preview mode */}
-      {!isPreviewMode && selectedWebsite?.status !== 'published' && (
+      {/* Show warning if viewing inactive theme */}
+      {!isPreviewMode && theme && !isActive && themeSlug && (
         <div className="fixed top-0 left-0 right-0 z-[9999] bg-amber-500 text-white text-center py-1 text-xs">
-          This website is in draft mode. Only published websites are visible to the public.
+          This theme is not active. The website may not display correctly.
         </div>
       )}
 
@@ -241,7 +252,7 @@ export default function Preview() {
             <SectionRenderer
               section={section}
               themeColors={themeColors}
-              isPreview={isPreviewMode}
+              isPreview={true}
             />
           </SectionAnchor>
         ))
@@ -262,12 +273,27 @@ function SectionAnchor({ id, children }) {
 function PreviewBanner({ previewInfo }) {
   const [visible, setVisible] = useState(true);
   if (!visible) return null;
-  
-  const { type, name, slug, websiteName, websiteStatus, themeName, isPreviewMode } = previewInfo;
-  
+
+  const {
+    type,
+    name,
+    slug,
+    websiteName,
+    isPublished,
+    isActive,
+    themeName,
+    isPreviewMode,
+  } = previewInfo;
+
   // Determine banner color based on status
-  const bannerColor = websiteStatus === 'published' ? "#4f46e5" : "#f59e0b";
-  
+  let bannerColor = "#4f46e5"; // default indigo
+
+  if (type === "website" && !isPublished) {
+    bannerColor = "#f59e0b"; // amber for unpublished website
+  } else if (type === "theme" && !isActive) {
+    bannerColor = "#f59e0b"; // amber for inactive theme
+  }
+
   return (
     <div
       className="fixed bottom-0 left-0 right-0 z-[9999] flex items-center justify-between px-5 py-2.5 text-white text-sm shadow-lg"
@@ -276,20 +302,35 @@ function PreviewBanner({ previewInfo }) {
       <div className="flex items-center gap-2.5">
         <span className="w-2 h-2 rounded-full bg-yellow-300 animate-pulse flex-shrink-0" />
         <span className="font-semibold tracking-tight">Preview Mode</span>
-        
-        {/* Status indicator */}
-        {websiteStatus && (
+
+        {/* Status indicators */}
+        {type === "website" && (
           <>
             <span className="opacity-40 select-none">·</span>
-            <span className={`text-xs px-1.5 py-0.5 rounded ${
-              websiteStatus === 'published' ? 'bg-green-500' : 'bg-amber-500'
-            }`}>
-              {websiteStatus}
+            <span
+              className={`text-xs px-1.5 py-0.5 rounded ${
+                isPublished ? "bg-green-500" : "bg-amber-500"
+              }`}
+            >
+              {isPublished ? "published" : "draft"}
             </span>
           </>
         )}
-        
-        {type === 'theme' && themeName && (
+
+        {type === "theme" && (
+          <>
+            <span className="opacity-40 select-none">·</span>
+            <span
+              className={`text-xs px-1.5 py-0.5 rounded ${
+                isActive ? "bg-green-500" : "bg-amber-500"
+              }`}
+            >
+              {isActive ? "active" : "inactive"}
+            </span>
+          </>
+        )}
+
+        {type === "theme" && themeName && (
           <>
             <span className="opacity-40 select-none">·</span>
             <span className="opacity-85 truncate max-w-[200px]">
@@ -305,12 +346,10 @@ function PreviewBanner({ previewInfo }) {
             </span>
           </>
         )}
-        {type === 'website' && name && !themeName && (
+        {type === "website" && name && !themeName && (
           <>
             <span className="opacity-40 select-none">·</span>
-            <span className="opacity-85 truncate max-w-[200px]">
-              {name}
-            </span>
+            <span className="opacity-85 truncate max-w-[200px]">{name}</span>
           </>
         )}
       </div>
@@ -318,7 +357,8 @@ function PreviewBanner({ previewInfo }) {
         <div className="hidden sm:flex items-center gap-2 text-xs opacity-60">
           {slug && (
             <span className="font-mono">
-              {type === 'theme' ? '/t/' : '/c/'}{slug}
+              {type === "theme" ? "/t/" : "/c/"}
+              {slug}
             </span>
           )}
         </div>

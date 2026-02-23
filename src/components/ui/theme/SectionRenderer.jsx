@@ -310,7 +310,7 @@ export default function SectionRenderer({
     const renderLogo = () =>
       p.showLogo && (
         <a
-          href={`/c/${selectedWebsite.slug}`}
+          href={`/c/${selectedWebsite?.slug}`}
           onClick={handleLinkClick}
           className="flex-shrink-0 flex items-center gap-2"
         >
