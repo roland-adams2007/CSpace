@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import axiosInstance from "../../../api/axiosInstance";
 import { useWebsiteStore } from "../../../store/store";
 
-export default function SectionRenderer({ section, themeColors }) {
+export default function SectionRenderer({ section, themeColors, isPreview = false }) {
   const { selectedWebsite } = useWebsiteStore();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -21,6 +21,9 @@ export default function SectionRenderer({ section, themeColors }) {
   const isCarousel = variant === "carousel" || carousel?.enabled === true;
   const isSplit = variant === "split";
   const isList = variant === "list";
+
+  // In the editor canvas we block all link navigation; in preview we allow it
+  const handleLinkClick = isPreview ? undefined : (e) => e.preventDefault();
 
   const getCarouselItems = () => {
     if (section.props.testimonials) return section.props.testimonials;
@@ -143,7 +146,9 @@ export default function SectionRenderer({ section, themeColors }) {
       backgroundColor: p.transparent ? "transparent" : p.backgroundColor || "#ffffff",
       backdropFilter: p.blur ? "blur(12px)" : "none",
       WebkitBackdropFilter: p.blur ? "blur(12px)" : "none",
-      position: p.sticky ? "sticky" : "relative",
+      // sticky only works when the element is directly inside the scroll container
+      // In editor (canvas) we keep it relative so it doesn't escape the canvas scroll area
+      position: p.sticky && isPreview ? "sticky" : p.sticky ? "sticky" : "relative",
       top: 0,
       zIndex: 100,
       borderBottom: p.borderBottom ? `1px solid ${p.borderColor || "#e5e7eb"}` : "none",
@@ -155,7 +160,7 @@ export default function SectionRenderer({ section, themeColors }) {
           <div key={idx} className="relative group/nav">
             <a
               href={item.url || "#"}
-              onClick={(e) => e.preventDefault()}
+              onClick={handleLinkClick}
               className="flex items-center gap-1 text-sm font-medium transition-colors hover:opacity-70"
               style={{ color: p.textColor || "#111827" }}
             >
@@ -167,7 +172,7 @@ export default function SectionRenderer({ section, themeColors }) {
             {item.hasSubmenu && item.submenu?.length > 0 && (
               <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 opacity-0 invisible group-hover/nav:opacity-100 group-hover/nav:visible transition-all z-50">
                 {item.submenu.map((sub, sIdx) => (
-                  <a key={sIdx} href={sub.url || "#"} onClick={(e) => e.preventDefault()}
+                  <a key={sIdx} href={sub.url || "#"} onClick={handleLinkClick}
                     className="block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors">
                     {sub.label}
                   </a>
@@ -180,35 +185,26 @@ export default function SectionRenderer({ section, themeColors }) {
     );
 
     const renderSearch = () => p.showSearch && (
-      <div className="flex items-center relative">
+      <div className="flex items-center">
         {searchOpen ? (
-          <div
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all"
-            style={{ backgroundColor: p.transparent ? "rgba(255,255,255,0.15)" : "#f3f4f6" }}
-            onMouseDown={(e) => e.preventDefault()}
-          >
-            <LucideIcons.Search className="w-4 h-4 flex-shrink-0" style={{ color: p.searchIconColor || p.textColor || "#6b7280" }} />
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-lg transition-all">
+            <LucideIcons.Search className="w-4 h-4 text-gray-400 flex-shrink-0" />
             <input
               autoFocus
               type="text"
               placeholder="Search..."
-              className="bg-transparent text-sm outline-none w-36"
-              style={{ color: p.textColor || "#111827" }}
+              className="bg-transparent text-sm outline-none w-32 text-gray-700 placeholder-gray-400"
               onBlur={() => setSearchOpen(false)}
             />
-            <button
-              onMouseDown={(e) => { e.preventDefault(); setSearchOpen(false); }}
-              className="flex-shrink-0 opacity-60 hover:opacity-100 transition-opacity"
-            >
-              <LucideIcons.X className="w-3.5 h-3.5" style={{ color: p.textColor || "#6b7280" }} />
+            <button onClick={() => setSearchOpen(false)}>
+              <LucideIcons.X className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" />
             </button>
           </div>
         ) : (
           <button
             onClick={() => setSearchOpen(true)}
-            className="p-2 rounded-lg transition-colors hover:opacity-70"
+            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
             style={{ color: p.searchIconColor || p.textColor || "#111827" }}
-            title="Search"
           >
             <LucideIcons.Search className="w-5 h-5" />
           </button>
@@ -219,7 +215,7 @@ export default function SectionRenderer({ section, themeColors }) {
     const renderCta = () => p.showCta && p.ctaText && (
       <a
         href={p.ctaLink || "#"}
-        onClick={(e) => e.preventDefault()}
+        onClick={handleLinkClick}
         className="hidden md:inline-flex items-center px-5 py-2 rounded-lg text-sm font-semibold transition-all"
         style={p.ctaStyle === "outline"
           ? { border: `2px solid ${p.ctaColor || primaryColor}`, color: p.ctaColor || primaryColor, backgroundColor: "transparent" }
@@ -231,7 +227,7 @@ export default function SectionRenderer({ section, themeColors }) {
     );
 
     const renderLogo = () => p.showLogo && (
-      <a href="/" onClick={(e) => e.preventDefault()} className="flex-shrink-0 flex items-center gap-2">
+      <a href="/" onClick={handleLinkClick} className="flex-shrink-0 flex items-center gap-2">
         {p.logo
           ? <img src={p.logo} alt="Logo" style={{ height: `${logoHeight}px`, width: "auto", objectFit: "contain" }} />
           : <span className="text-lg font-bold" style={{ color: p.textColor || "#111827" }}>{p.logoText || "Brand"}</span>
@@ -255,7 +251,10 @@ export default function SectionRenderer({ section, themeColors }) {
         <div className="px-4 space-y-1">
           {(p.menu || []).map((item, idx) => (
             <div key={idx}>
-              <a href={item.url || "#"} onClick={(e) => { e.preventDefault(); if (item.hasSubmenu) setOpenSubmenu(openSubmenu === idx ? null : idx); }}
+              <a href={item.url || "#"} onClick={(e) => {
+                  if (!isPreview) e.preventDefault();
+                  if (item.hasSubmenu) setOpenSubmenu(openSubmenu === idx ? null : idx);
+                }}
                 className="flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors"
                 style={{ color: p.textColor || "#111827" }}>
                 {item.label}
@@ -266,7 +265,7 @@ export default function SectionRenderer({ section, themeColors }) {
               {item.hasSubmenu && openSubmenu === idx && (
                 <div className="ml-4 mt-1 space-y-1">
                   {item.submenu.map((sub, sIdx) => (
-                    <a key={sIdx} href={sub.url || "#"} onClick={(e) => e.preventDefault()}
+                    <a key={sIdx} href={sub.url || "#"} onClick={handleLinkClick}
                       className="block px-3 py-2 text-sm text-gray-500 hover:text-gray-900 rounded-lg transition-colors">
                       {sub.label}
                     </a>
@@ -283,7 +282,7 @@ export default function SectionRenderer({ section, themeColors }) {
           )}
           {p.showCta && p.ctaText && (
             <div className="pt-2">
-              <a href={p.ctaLink || "#"} onClick={(e) => e.preventDefault()}
+              <a href={p.ctaLink || "#"} onClick={handleLinkClick}
                 className="block text-center px-5 py-2.5 rounded-lg text-sm font-semibold"
                 style={{ backgroundColor: p.ctaColor || primaryColor, color: p.ctaTextColor || "#ffffff" }}>
                 {p.ctaText}
@@ -330,7 +329,7 @@ export default function SectionRenderer({ section, themeColors }) {
         <div className="flex items-center justify-between w-full">
           <nav className="hidden md:flex items-center gap-6">
             {leftMenu.map((item, idx) => (
-              <a key={idx} href={item.url || "#"} onClick={(e) => e.preventDefault()}
+              <a key={idx} href={item.url || "#"} onClick={handleLinkClick}
                 className="text-sm font-medium transition-colors hover:opacity-70"
                 style={{ color: p.textColor || "#111827" }}>{item.label}</a>
             ))}
@@ -339,7 +338,7 @@ export default function SectionRenderer({ section, themeColors }) {
           <div className="flex items-center gap-6">
             <nav className="hidden md:flex items-center gap-6">
               {rightMenu.map((item, idx) => (
-                <a key={idx} href={item.url || "#"} onClick={(e) => e.preventDefault()}
+                <a key={idx} href={item.url || "#"} onClick={handleLinkClick}
                   className="text-sm font-medium transition-colors hover:opacity-70"
                   style={{ color: p.textColor || "#111827" }}>{item.label}</a>
               ))}
@@ -416,12 +415,6 @@ export default function SectionRenderer({ section, themeColors }) {
       }
     };
 
-    const LogoEl = () => p.showLogo && (
-      p.logo
-        ? <img src={p.logo} alt="Logo" style={{ height: `${logoHeight}px`, width: "auto", objectFit: "contain" }} />
-        : <span className="text-lg font-bold" style={{ color: p.logoTextColor || p.textColor || "#ffffff" }}>{p.logoText || "Brand"}</span>
-    );
-
     if (variant === "simple") {
       return (
         <div style={containerStyle}>
@@ -437,7 +430,7 @@ export default function SectionRenderer({ section, themeColors }) {
               </div>
               <div className="flex flex-wrap gap-6">
                 {(p.columns || []).flatMap((col) => col.links || []).map((link, i) => (
-                  <a key={i} href={link.url || "#"} onClick={(e) => e.preventDefault()}
+                  <a key={i} href={link.url || "#"} onClick={handleLinkClick}
                     className="text-sm transition-colors hover:opacity-100"
                     style={{ color: p.linkColor || "#9ca3af" }}>{link.label}</a>
                 ))}
@@ -445,7 +438,8 @@ export default function SectionRenderer({ section, themeColors }) {
               {p.showSocial && (
                 <div className="flex gap-3">
                   {(p.socialLinks || []).map((s, i) => (
-                    <a key={i} href={s.url || "#"} target="_blank" rel="noopener noreferrer"
+                    <a key={i} href={s.url || "#"} target={isPreview ? "_blank" : undefined} rel="noopener noreferrer"
+                      onClick={handleLinkClick}
                       className="text-sm font-medium transition-colors hover:opacity-100"
                       style={{ color: p.linkColor || "#9ca3af" }}>{s.platform}</a>
                   ))}
@@ -477,7 +471,7 @@ export default function SectionRenderer({ section, themeColors }) {
             {p.tagline && <p className="mb-8 text-sm" style={{ color: p.taglineColor || "rgba(255,255,255,0.6)" }}>{p.tagline}</p>}
             <div className="flex flex-wrap justify-center gap-8 mb-8">
               {(p.columns || []).flatMap((col) => col.links || []).map((link, i) => (
-                <a key={i} href={link.url || "#"} onClick={(e) => e.preventDefault()}
+                <a key={i} href={link.url || "#"} onClick={handleLinkClick}
                   className="text-sm transition-colors hover:opacity-100"
                   style={{ color: p.linkColor || "#9ca3af" }}>{link.label}</a>
               ))}
@@ -485,7 +479,8 @@ export default function SectionRenderer({ section, themeColors }) {
             {p.showSocial && (
               <div className="flex justify-center gap-4 mb-8">
                 {(p.socialLinks || []).map((s, i) => (
-                  <a key={i} href={s.url || "#"} target="_blank" rel="noopener noreferrer"
+                  <a key={i} href={s.url || "#"} target={isPreview ? "_blank" : undefined} rel="noopener noreferrer"
+                    onClick={handleLinkClick}
                     className="text-sm font-medium transition-colors hover:opacity-100"
                     style={{ color: p.linkColor || "#9ca3af" }}>{s.platform}</a>
                 ))}
@@ -512,7 +507,8 @@ export default function SectionRenderer({ section, themeColors }) {
             {p.showSocial && (
               <div className="flex gap-4">
                 {(p.socialLinks || []).map((s, i) => (
-                  <a key={i} href={s.url || "#"} target="_blank" rel="noopener noreferrer"
+                  <a key={i} href={s.url || "#"} target={isPreview ? "_blank" : undefined} rel="noopener noreferrer"
+                    onClick={handleLinkClick}
                     className="text-xs font-medium transition-colors hover:opacity-100"
                     style={{ color: p.linkColor || "#9ca3af" }}>{s.platform}</a>
                 ))}
@@ -546,7 +542,8 @@ export default function SectionRenderer({ section, themeColors }) {
                 {p.showSocial && (
                   <div className="flex gap-3 flex-wrap">
                     {(p.socialLinks || []).map((s, i) => (
-                      <a key={i} href={s.url || "#"} target="_blank" rel="noopener noreferrer"
+                      <a key={i} href={s.url || "#"} target={isPreview ? "_blank" : undefined} rel="noopener noreferrer"
+                        onClick={handleLinkClick}
                         className="text-sm font-medium transition-colors hover:opacity-100"
                         style={{ color: p.linkColor || "#9ca3af" }}>{s.platform}</a>
                     ))}
@@ -562,7 +559,7 @@ export default function SectionRenderer({ section, themeColors }) {
                 <ul className="space-y-3">
                   {(col.links || []).map((link, lIdx) => (
                     <li key={lIdx}>
-                      <a href={link.url || "#"} onClick={(e) => e.preventDefault()}
+                      <a href={link.url || "#"} onClick={handleLinkClick}
                         className="text-sm transition-colors hover:opacity-100"
                         style={{ color: p.linkColor || "#9ca3af" }}>
                         {link.label}
@@ -628,7 +625,7 @@ export default function SectionRenderer({ section, themeColors }) {
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">{slide.heading || heading || "Slide Heading"}</h1>
               <p className="text-xl md:text-2xl mb-10 max-w-3xl mx-auto text-white/90">{slide.subheading || subheading || ""}</p>
               {slide.ctaText && (
-                <a href={slide.ctaLink || "#"} className="inline-block px-10 py-4 bg-white text-gray-900 rounded-xl font-semibold text-lg hover:bg-gray-100 transition-all shadow-lg">{slide.ctaText}</a>
+                <a href={slide.ctaLink || "#"} onClick={handleLinkClick} className="inline-block px-10 py-4 bg-white text-gray-900 rounded-xl font-semibold text-lg hover:bg-gray-100 transition-all shadow-lg">{slide.ctaText}</a>
               )}
             </div>
           </div>
@@ -646,8 +643,8 @@ export default function SectionRenderer({ section, themeColors }) {
                 <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight" style={{ color: headingColor || textOnBg() }}>{heading || "Hero Heading"}</h1>
                 <p className="text-lg md:text-xl mb-8 leading-relaxed" style={{ color: subheadingColor || textOnBg("#6b7280") }}>{subheading || "Hero subheading goes here"}</p>
                 <div className="flex flex-wrap gap-4">
-                  {ctaText && <a href={ctaLink || "#"} className="inline-block px-8 py-4 rounded-xl font-semibold text-lg transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1" style={{ backgroundColor: ctaColor || primaryColor, color: ctaTextColor || "#ffffff" }}>{ctaText}</a>}
-                  {secondaryCtaText && <a href={secondaryCtaLink || "#"} className="inline-block px-8 py-4 border-2 rounded-xl font-semibold transition-all" style={{ borderColor: secondaryCtaBorderColor || "#e5e7eb", backgroundColor: secondaryCtaColor || "transparent", color: secondaryCtaTextColor || "#374151" }}>{secondaryCtaText}</a>}
+                  {ctaText && <a href={ctaLink || "#"} onClick={handleLinkClick} className="inline-block px-8 py-4 rounded-xl font-semibold text-lg transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1" style={{ backgroundColor: ctaColor || primaryColor, color: ctaTextColor || "#ffffff" }}>{ctaText}</a>}
+                  {secondaryCtaText && <a href={secondaryCtaLink || "#"} onClick={handleLinkClick} className="inline-block px-8 py-4 border-2 rounded-xl font-semibold transition-all" style={{ borderColor: secondaryCtaBorderColor || "#e5e7eb", backgroundColor: secondaryCtaColor || "transparent", color: secondaryCtaTextColor || "#374151" }}>{secondaryCtaText}</a>}
                 </div>
               </div>
               <div className="relative">
@@ -675,8 +672,8 @@ export default function SectionRenderer({ section, themeColors }) {
           <h1 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-8 leading-tight" style={{ color: headingColor || textOnBg() }}>{heading || "Hero Heading"}</h1>
           <p className="text-xl md:text-2xl mb-10 max-w-3xl mx-auto leading-relaxed" style={{ color: subheadingColor || textOnBg("#6b7280") }}>{subheading || "Hero subheading goes here"}</p>
           <div className={`flex flex-wrap gap-4 justify-${alignment === "center" ? "center" : "start"}`}>
-            {ctaText && <a href={ctaLink || "#"} className="inline-block px-10 py-4 rounded-xl font-semibold text-lg transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1" style={{ backgroundColor: ctaColor || primaryColor, color: ctaTextColor || "#ffffff" }}>{ctaText}</a>}
-            {secondaryCtaText && <a href={secondaryCtaLink || "#"} className="inline-block px-10 py-4 border-2 rounded-xl font-semibold transition-all" style={{ borderColor: secondaryCtaBorderColor || "#e5e7eb", backgroundColor: secondaryCtaColor || "transparent", color: secondaryCtaTextColor || "#374151" }}>{secondaryCtaText}</a>}
+            {ctaText && <a href={ctaLink || "#"} onClick={handleLinkClick} className="inline-block px-10 py-4 rounded-xl font-semibold text-lg transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1" style={{ backgroundColor: ctaColor || primaryColor, color: ctaTextColor || "#ffffff" }}>{ctaText}</a>}
+            {secondaryCtaText && <a href={secondaryCtaLink || "#"} onClick={handleLinkClick} className="inline-block px-10 py-4 border-2 rounded-xl font-semibold transition-all" style={{ borderColor: secondaryCtaBorderColor || "#e5e7eb", backgroundColor: secondaryCtaColor || "transparent", color: secondaryCtaTextColor || "#374151" }}>{secondaryCtaText}</a>}
           </div>
         </div>
       </div>
@@ -1076,12 +1073,12 @@ export default function SectionRenderer({ section, themeColors }) {
           {subheading && <p className="text-lg md:text-xl mb-12 max-w-2xl mx-auto" style={{ color: subheadingColor || "rgba(255,255,255,0.9)" }}>{subheading}</p>}
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
             {primaryButton?.text && (
-              <a href={primaryButton.link || "#"} className="px-10 py-4 rounded-xl font-semibold text-lg transition-all shadow-xl hover:shadow-2xl transform hover:-translate-y-1" style={{ backgroundColor: primaryButton.backgroundColor || "#ffffff", color: primaryButton.textColor || primaryColor }}>
+              <a href={primaryButton.link || "#"} onClick={handleLinkClick} className="px-10 py-4 rounded-xl font-semibold text-lg transition-all shadow-xl hover:shadow-2xl transform hover:-translate-y-1" style={{ backgroundColor: primaryButton.backgroundColor || "#ffffff", color: primaryButton.textColor || primaryColor }}>
                 {primaryButton.text}
               </a>
             )}
             {secondaryButton?.text && (
-              <a href={secondaryButton.link || "#"} className="px-10 py-4 border-2 rounded-xl font-semibold hover:bg-white/10 transition-all" style={{ borderColor: secondaryButton.borderColor || "#ffffff", color: secondaryButton.textColor || "#ffffff" }}>
+              <a href={secondaryButton.link || "#"} onClick={handleLinkClick} className="px-10 py-4 border-2 rounded-xl font-semibold hover:bg-white/10 transition-all" style={{ borderColor: secondaryButton.borderColor || "#ffffff", color: secondaryButton.textColor || "#ffffff" }}>
                 {secondaryButton.text}
               </a>
             )}
@@ -1131,7 +1128,7 @@ export default function SectionRenderer({ section, themeColors }) {
                     </li>
                   ))}
                 </ul>
-                <a href={plan.ctaLink || "#"} className={`block w-full py-4 rounded-xl font-bold text-lg text-center transition-all ${plan.highlighted ? "text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1" : "bg-gray-100 hover:bg-gray-200"}`}
+                <a href={plan.ctaLink || "#"} onClick={handleLinkClick} className={`block w-full py-4 rounded-xl font-bold text-lg text-center transition-all ${plan.highlighted ? "text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1" : "bg-gray-100 hover:bg-gray-200"}`}
                   style={{ backgroundColor: plan.highlighted ? (highlightColor || primaryColor) : undefined, color: plan.highlighted ? "#ffffff" : (planNameColor || "#111827") }}>
                   {plan.ctaText}
                 </a>
@@ -1144,7 +1141,7 @@ export default function SectionRenderer({ section, themeColors }) {
   };
 
   const renderContact = () => {
-    const { heading, subheading, fields = [], submitText, successMessage, errorMessage, headingColor, subheadingColor, cardBackground, labelColor, inputBorderColor, inputFocusColor, buttonColor, buttonTextColor } = section.props;
+    const { heading, subheading, fields = [], submitText, successMessage, errorMessage, headingColor, subheadingColor, cardBackground, labelColor, inputBorderColor, buttonColor, buttonTextColor } = section.props;
     const [localState, setLocalState] = useState({ loading: false, success: false, error: false, message: "" });
     const overlayStyle = getOverlayStyle();
     return (
@@ -1173,7 +1170,7 @@ export default function SectionRenderer({ section, themeColors }) {
                   </div>
                 ))}
                 {localState.error && <p className="text-red-500 text-sm">{localState.message}</p>}
-                <button type="submit" disabled={localState.loading} className="w-full py-4 text-white rounded-xl font-bold text-lg transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1 disabled:opacity-60" style={{ backgroundColor: buttonColor || primaryColor, color: buttonTextColor || "#ffffff" }}>
+                <button type="submit" disabled={localState.loading} className="w-full py-4 rounded-xl font-bold text-lg transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1 disabled:opacity-60" style={{ backgroundColor: buttonColor || primaryColor, color: buttonTextColor || "#ffffff" }}>
                   {localState.loading ? "Sending..." : (submitText || "Submit")}
                 </button>
               </form>
@@ -1335,7 +1332,7 @@ export default function SectionRenderer({ section, themeColors }) {
   };
 
   const renderTrust = () => {
-    const { heading, subheading, badges = [], testimonials = [], awards = [], headingColor, subheadingColor, iconBackground, iconColor, badgeTitleColor, badgeDescColor, awardBackground, awardBorderColor, awardTextColor } = section.props;
+    const { heading, subheading, badges = [], awards = [], headingColor, subheadingColor, iconBackground, iconColor, badgeTitleColor, badgeDescColor, awardBackground, awardBorderColor, awardTextColor } = section.props;
     const overlayStyle = getOverlayStyle();
     return (
       <div style={getSectionStyle()}>

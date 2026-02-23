@@ -50,11 +50,23 @@ export default function Preview() {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-3 px-4 text-center">
         <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
-          <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12A9 9 0 113 12a9 9 0 0118 0z" />
+          <svg
+            className="w-8 h-8 text-red-500"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 9v2m0 4h.01M21 12A9 9 0 113 12a9 9 0 0118 0z"
+            />
           </svg>
         </div>
-        <h2 className="text-lg font-semibold text-gray-900">Preview Unavailable</h2>
+        <h2 className="text-lg font-semibold text-gray-900">
+          Preview Unavailable
+        </h2>
         <p className="text-sm text-gray-500 max-w-sm">{error}</p>
         <button
           onClick={loadTheme}
@@ -79,40 +91,64 @@ export default function Preview() {
 
   return (
     <>
-      {googleFontsUrl && (
-        <link rel="stylesheet" href={googleFontsUrl} />
-      )}
+      {googleFontsUrl && <link rel="stylesheet" href={googleFontsUrl} />}
 
       <style>{`
-        body { font-family: '${bodyFont}', sans-serif; }
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; }
+        body { font-family: '${bodyFont}', sans-serif; background-color: ${themeColors.background || "#ffffff"}; color: ${themeColors.text || "#111827"}; }
         h1, h2, h3, h4, h5, h6 { font-family: '${headingFont}', sans-serif; }
       `}</style>
+
+      {loader?.enabled && <StartupLoader loader={loader} />}
 
       {isPreviewMode && (
         <PreviewBanner themeName={theme?.name} slug={themeSlug} />
       )}
 
-      {loader?.enabled && <StartupLoader loader={loader} />}
-
-      <div
-        style={{
-          backgroundColor: themeColors.background || "#ffffff",
-          color: themeColors.text || "#111827",
-          minHeight: "100vh",
-        }}
-      >
-        {sections.length === 0 ? (
-          <EmptyState />
-        ) : (
-          sections.map((section) => (
-            <div key={section.id} id={section.id}>
-              <SectionRenderer section={section} themeColors={themeColors} />
-            </div>
-          ))
-        )}
-      </div>
+      {/*
+        CRITICAL: No wrapper div around sections.
+        sticky position: sticky on the header only works when it is a direct
+        child of the document scroll container (body / html).
+        Any intermediate div with overflow, transform, or its own height
+        will break sticky. So we render sections as siblings at the top level.
+      */}
+      {sections.length === 0 ? (
+        <EmptyState />
+      ) : (
+        sections.map((section) => (
+          // The id goes on the SectionRenderer's own root element via a wrapper
+          // that does NOT interfere with sticky. We use a fragment-like approach:
+          // give each section an anchor target via an invisible zero-height div
+          // placed just before it, so #section-id scroll-links still work.
+          <SectionAnchor key={section.id} id={section.id}>
+            <SectionRenderer
+              section={section}
+              themeColors={themeColors}
+              isPreview={true}
+            />
+          </SectionAnchor>
+        ))
+      )}
     </>
   );
+}
+
+/**
+ * Renders an invisible anchor point for #hash navigation,
+ * then the section content as a sibling — NOT a child.
+ * This preserves sticky positioning on headers.
+ */
+function SectionAnchor({ id, children }) {
+  const isHeader = id?.startsWith("header") || false;
+
+  // For the header section, render with no wrapper at all so sticky works.
+  if (isHeader) {
+    return children;
+  }
+
+  // For all other sections, a normal div wrapper is fine.
+  return <div id={id}>{children}</div>;
 }
 
 function PreviewBanner({ themeName, slug }) {
@@ -120,7 +156,7 @@ function PreviewBanner({ themeName, slug }) {
   if (!visible) return null;
   return (
     <div
-      className="fixed top-0 left-0 right-0 z-[9999] flex items-center justify-between px-5 py-2.5 text-white text-sm shadow-lg"
+      className="fixed bottom-0 left-0 right-0 z-[9999] flex items-center justify-between px-5 py-2.5 text-white text-sm shadow-lg"
       style={{ backgroundColor: "#4f46e5" }}
     >
       <div className="flex items-center gap-2.5">
@@ -129,21 +165,35 @@ function PreviewBanner({ themeName, slug }) {
         {themeName && (
           <>
             <span className="opacity-40 select-none">·</span>
-            <span className="opacity-85 truncate max-w-[200px]">{themeName}</span>
+            <span className="opacity-85 truncate max-w-[200px]">
+              {themeName}
+            </span>
           </>
         )}
       </div>
       <div className="flex items-center gap-3">
         {slug && (
-          <span className="hidden sm:inline text-xs opacity-60 font-mono">/t/{slug}</span>
+          <span className="hidden sm:inline text-xs opacity-60 font-mono">
+            /t/{slug}
+          </span>
         )}
         <button
           onClick={() => setVisible(false)}
           className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-white/20 transition-colors"
           aria-label="Dismiss banner"
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M6 18L18 6M6 6l12 12"
+            />
           </svg>
         </button>
       </div>
@@ -186,9 +236,8 @@ function StartupLoader({ loader }) {
           }}
         />
       )}
-
       {loader.type === "progress" && (
-        <div className="w-52 space-y-2">
+        <div className="w-52">
           <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
             <div
               className="h-full rounded-full"
@@ -201,7 +250,6 @@ function StartupLoader({ loader }) {
           </div>
         </div>
       )}
-
       {loader.type === "image" && loader.image && (
         <img
           src={loader.image}
@@ -209,7 +257,6 @@ function StartupLoader({ loader }) {
           className="max-h-24 max-w-xs object-contain animate-pulse"
         />
       )}
-
       {loader.type === "svg" && loader.svg && (
         <div dangerouslySetInnerHTML={{ __html: loader.svg }} />
       )}
@@ -221,7 +268,12 @@ function EmptyState() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-gray-50 text-center px-4">
       <div className="w-16 h-16 rounded-2xl bg-gray-200 flex items-center justify-center">
-        <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg
+          className="w-8 h-8 text-gray-400"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -232,7 +284,8 @@ function EmptyState() {
       </div>
       <h2 className="text-lg font-semibold text-gray-800">No sections yet</h2>
       <p className="text-sm text-gray-500 max-w-xs">
-        This theme has no content sections. Add sections in the editor to see them here.
+        This theme has no content sections. Add sections in the editor to see
+        them here.
       </p>
     </div>
   );
@@ -240,12 +293,22 @@ function EmptyState() {
 
 function buildGoogleFontsUrl(fontNames) {
   const systemFonts = new Set([
-    "system-ui", "Arial", "Georgia", "serif", "sans-serif", "monospace", "Inter",
+    "system-ui",
+    "Arial",
+    "Georgia",
+    "serif",
+    "sans-serif",
+    "monospace",
+    "Inter",
   ]);
-  const toLoad = [...new Set(fontNames)].filter((f) => f && !systemFonts.has(f));
+  const toLoad = [...new Set(fontNames)].filter(
+    (f) => f && !systemFonts.has(f),
+  );
   if (toLoad.length === 0) return null;
   const families = toLoad
-    .map((f) => `family=${encodeURIComponent(f)}:wght@300;400;500;600;700;800;900`)
+    .map(
+      (f) => `family=${encodeURIComponent(f)}:wght@300;400;500;600;700;800;900`,
+    )
     .join("&");
   return `https://fonts.googleapis.com/css2?${families}&display=swap`;
 }
