@@ -7,6 +7,7 @@ import PublicRoute from "./PublicRoute";
 import ProtectedRoute from "./ProtectedRoute";
 import Dashboard from "../pages/Dashboard";
 import Preview from "../pages/Preview";
+import FIleManager from "../pages/FileManager";
 
 const Login = lazy(() => import("../components/auth/Login"));
 const Register = lazy(() => import("../components/auth/Register"));
@@ -30,7 +31,7 @@ export default function AppRoutes() {
           <Route element={<Layout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/website-builder" element={<WebsiteBuilder />} />
-            <Route path="/files" element={<>File Manager</>} />
+            <Route path="/files" element={<FIleManager />} />
             <Route path="/messages" element={<>Messages</>} />
             <Route path="/automations" element={<>Automations</>} />
             <Route path="/analytics" element={<>Analytics</>} />

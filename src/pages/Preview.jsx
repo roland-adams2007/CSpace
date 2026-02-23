@@ -14,7 +14,6 @@ export default function Preview() {
   const [websiteInfo, setWebsiteInfo] = useState(null);
   const [notFound, setNotFound] = useState(false);
 
-  // Use refs to track if we've already fetched
   const hasFetched = useRef(false);
   const currentSlug = useRef(null);
 
@@ -22,12 +21,10 @@ export default function Preview() {
     typeof window !== "undefined" &&
     new URLSearchParams(window.location.search).get("preview") === "true";
 
-  // Load content based on route
   useEffect(() => {
     const loadContent = async () => {
       const slugToLoad = themeSlug || websiteSlug;
 
-      // Prevent double fetching
       if (currentSlug.current === slugToLoad && hasFetched.current) return;
 
       currentSlug.current = slugToLoad;
@@ -40,15 +37,12 @@ export default function Preview() {
         let themeData = null;
         let websiteData = null;
 
-        // Case 1: Specific theme preview (/t/:themeSlug)
         if (themeSlug) {
-          // Public endpoint for getting a theme by slug
           const response = await axiosInstance.get(
             `/public/themes/${themeSlug}${isPreviewMode ? "?preview=true" : ""}`,
           );
           themeData = response.data.data.theme;
 
-          // If we have theme data, we might want to get its website info
           if (themeData && themeData.website_id) {
             try {
               const websiteResponse = await axiosInstance.get(
@@ -57,24 +51,16 @@ export default function Preview() {
               websiteData = websiteResponse.data.data.website;
               setWebsiteInfo(websiteData);
             } catch (websiteErr) {
-              console.error(
-                "Failed to fetch website info for theme:",
-                websiteErr,
-              );
+              console.error("Failed to fetch website info for theme:", websiteErr);
             }
           }
-        }
-        // Case 2: Website preview (/c/:websiteSlug)
-        else if (websiteSlug) {
-          // First, get website info to check if it's published and get active theme
-          // Public endpoint for getting website by slug
+        } else if (websiteSlug) {
           const websiteResponse = await axiosInstance.get(
             `/public/websites/${websiteSlug}${isPreviewMode ? "?preview=true" : ""}`,
           );
           websiteData = websiteResponse.data.data.website;
           setWebsiteInfo(websiteData);
 
-          // Check if website is published (for non-preview mode)
           if (!isPreviewMode && websiteData.is_published !== true) {
             setNotFound(true);
             setError("This website is not published");
@@ -82,8 +68,6 @@ export default function Preview() {
             return;
           }
 
-          // Get the active theme for this website
-          // Public endpoint for getting active theme by website slug
           const themeResponse = await axiosInstance.get(
             `/public/websites/${websiteSlug}/active-theme${isPreviewMode ? "?preview=true" : ""}`,
           );
@@ -93,8 +77,7 @@ export default function Preview() {
         if (themeData) {
           setTheme(themeData);
           let configData = themeData.config_json;
-          if (typeof configData === "string")
-            configData = JSON.parse(configData);
+          if (typeof configData === "string") configData = JSON.parse(configData);
           setConfig(configData);
         } else {
           setNotFound(true);
@@ -103,7 +86,6 @@ export default function Preview() {
       } catch (err) {
         console.error("Failed to load preview:", err);
 
-        // Handle different error statuses
         if (err.response?.status === 404) {
           setNotFound(true);
           setError(themeSlug ? "Theme not found" : "Website not found");
@@ -132,13 +114,7 @@ export default function Preview() {
     );
   }
 
-  // Show NotFound component for 404 errors or unpublished/private content
   if (notFound) {
-    const errorMessage =
-      error || (themeSlug ? "Theme not found" : "Website not found");
-    const isPrivate =
-      error?.includes("private") || error?.includes("not published");
-
     return <NotFound />;
   }
 
@@ -146,24 +122,12 @@ export default function Preview() {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-3 px-4 text-center">
         <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
-          <svg
-            className="w-8 h-8 text-red-500"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 9v2m0 4h.01M21 12A9 9 0 113 12a9 9 0 0118 0z"
-            />
+          <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12A9 9 0 113 12a9 9 0 0118 0z" />
           </svg>
         </div>
         <h2 className="text-lg font-semibold text-gray-900">
-          {error.includes("published")
-            ? "Website Not Published"
-            : "Preview Unavailable"}
+          {error.includes("published") ? "Website Not Published" : "Preview Unavailable"}
         </h2>
         <p className="text-sm text-gray-500 max-w-sm">{error}</p>
         {error.includes("published") && isPreviewMode ? (
@@ -172,10 +136,7 @@ export default function Preview() {
           </p>
         ) : (
           <button
-            onClick={() => {
-              hasFetched.current = false;
-              window.location.reload();
-            }}
+            onClick={() => { hasFetched.current = false; window.location.reload(); }}
             className="mt-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
           >
             Try Again
@@ -196,11 +157,7 @@ export default function Preview() {
   const bodyFont = fonts.body || "Inter";
   const googleFontsUrl = buildGoogleFontsUrl([headingFont, bodyFont]);
 
-  // Determine if website is published
-  const isPublished =
-    websiteInfo?.is_published === true || websiteInfo?.is_published === 1;
-
-  // Determine if theme is active
+  const isPublished = websiteInfo?.is_published === true || websiteInfo?.is_published === 1;
   const isActive = theme?.is_active === true || theme?.is_active === 1;
 
   const previewInfo = {
@@ -208,11 +165,16 @@ export default function Preview() {
     name: theme?.name || websiteInfo?.name,
     slug: themeSlug || websiteSlug,
     websiteName: websiteInfo?.name,
-    isPublished: isPublished,
-    isActive: isActive,
+    isPublished,
+    isActive,
     themeName: theme?.name,
     isPreviewMode,
   };
+
+  // Separate header/footer from body sections so we can control their wrappers
+  const headerSection = sections.find((s) => s.type === "header");
+  const footerSection = sections.find((s) => s.type === "footer");
+  const bodySections = sections.filter((s) => s.type !== "header" && s.type !== "footer");
 
   return (
     <>
@@ -221,23 +183,23 @@ export default function Preview() {
       <style>{`
         *, *::before, *::after { box-sizing: border-box; }
         html, body { margin: 0; padding: 0; }
-        body { font-family: '${bodyFont}', sans-serif; background-color: ${themeColors.background || "#ffffff"}; color: ${themeColors.text || "#111827"}; }
+        body {
+          font-family: '${bodyFont}', sans-serif;
+          background-color: ${themeColors.background || "#ffffff"};
+          color: ${themeColors.text || "#111827"};
+        }
         h1, h2, h3, h4, h5, h6 { font-family: '${headingFont}', sans-serif; }
       `}</style>
 
       {loader?.enabled && <StartupLoader loader={loader} />}
-
       {isPreviewMode && <PreviewBanner previewInfo={previewInfo} />}
 
-      {/* Show warning if viewing unpublished website without preview mode */}
       {!isPreviewMode && websiteInfo && !isPublished && (
         <div className="fixed top-0 left-0 right-0 z-[9999] bg-amber-500 text-white text-center py-1 text-xs">
-          This website is in draft mode. Only published websites are visible to
-          the public.
+          This website is in draft mode. Only published websites are visible to the public.
         </div>
       )}
 
-      {/* Show warning if viewing inactive theme */}
       {!isPreviewMode && theme && !isActive && themeSlug && (
         <div className="fixed top-0 left-0 right-0 z-[9999] bg-amber-500 text-white text-center py-1 text-xs">
           This theme is not active. The website may not display correctly.
@@ -247,52 +209,56 @@ export default function Preview() {
       {sections.length === 0 ? (
         <EmptyState />
       ) : (
-        sections.map((section) => (
-          <SectionAnchor key={section.id} id={section.id}>
+        <>
+          {/*
+            Header: rendered WITHOUT a wrapper div so position:sticky on the inner
+            element works against the viewport (the natural scroll container).
+            Any wrapping div — even an empty one — can break sticky in some browsers.
+          */}
+          {headerSection && (
             <SectionRenderer
-              section={section}
+              key={headerSection.id}
+              section={headerSection}
               themeColors={themeColors}
               isPreview={true}
             />
-          </SectionAnchor>
-        ))
+          )}
+
+          {/* Body sections each get an anchor div for scroll-to navigation */}
+          {bodySections.map((section) => (
+            <div key={section.id} id={section.id}>
+              <SectionRenderer
+                section={section}
+                themeColors={themeColors}
+                isPreview={true}
+              />
+            </div>
+          ))}
+
+          {/* Footer: also unwrapped */}
+          {footerSection && (
+            <SectionRenderer
+              key={footerSection.id}
+              section={footerSection}
+              themeColors={themeColors}
+              isPreview={true}
+            />
+          )}
+        </>
       )}
     </>
   );
-}
-
-// Helper components remain the same...
-function SectionAnchor({ id, children }) {
-  const isHeader = id?.startsWith("header") || false;
-  if (isHeader) {
-    return children;
-  }
-  return <div id={id}>{children}</div>;
 }
 
 function PreviewBanner({ previewInfo }) {
   const [visible, setVisible] = useState(true);
   if (!visible) return null;
 
-  const {
-    type,
-    name,
-    slug,
-    websiteName,
-    isPublished,
-    isActive,
-    themeName,
-    isPreviewMode,
-  } = previewInfo;
+  const { type, name, slug, websiteName, isPublished, isActive, themeName } = previewInfo;
 
-  // Determine banner color based on status
-  let bannerColor = "#4f46e5"; // default indigo
-
-  if (type === "website" && !isPublished) {
-    bannerColor = "#f59e0b"; // amber for unpublished website
-  } else if (type === "theme" && !isActive) {
-    bannerColor = "#f59e0b"; // amber for inactive theme
-  }
+  let bannerColor = "#4f46e5";
+  if (type === "website" && !isPublished) bannerColor = "#f59e0b";
+  else if (type === "theme" && !isActive) bannerColor = "#f59e0b";
 
   return (
     <div
@@ -303,47 +269,32 @@ function PreviewBanner({ previewInfo }) {
         <span className="w-2 h-2 rounded-full bg-yellow-300 animate-pulse flex-shrink-0" />
         <span className="font-semibold tracking-tight">Preview Mode</span>
 
-        {/* Status indicators */}
         {type === "website" && (
           <>
             <span className="opacity-40 select-none">·</span>
-            <span
-              className={`text-xs px-1.5 py-0.5 rounded ${
-                isPublished ? "bg-green-500" : "bg-amber-500"
-              }`}
-            >
+            <span className={`text-xs px-1.5 py-0.5 rounded ${isPublished ? "bg-green-500" : "bg-amber-500"}`}>
               {isPublished ? "published" : "draft"}
             </span>
           </>
         )}
-
         {type === "theme" && (
           <>
             <span className="opacity-40 select-none">·</span>
-            <span
-              className={`text-xs px-1.5 py-0.5 rounded ${
-                isActive ? "bg-green-500" : "bg-amber-500"
-              }`}
-            >
+            <span className={`text-xs px-1.5 py-0.5 rounded ${isActive ? "bg-green-500" : "bg-amber-500"}`}>
               {isActive ? "active" : "inactive"}
             </span>
           </>
         )}
-
         {type === "theme" && themeName && (
           <>
             <span className="opacity-40 select-none">·</span>
-            <span className="opacity-85 truncate max-w-[200px]">
-              Theme: {themeName}
-            </span>
+            <span className="opacity-85 truncate max-w-[200px]">Theme: {themeName}</span>
           </>
         )}
         {websiteName && (
           <>
             <span className="opacity-40 select-none">·</span>
-            <span className="opacity-60 truncate max-w-[150px] text-xs">
-              Site: {websiteName}
-            </span>
+            <span className="opacity-60 truncate max-w-[150px] text-xs">Site: {websiteName}</span>
           </>
         )}
         {type === "website" && name && !themeName && (
@@ -355,30 +306,15 @@ function PreviewBanner({ previewInfo }) {
       </div>
       <div className="flex items-center gap-3">
         <div className="hidden sm:flex items-center gap-2 text-xs opacity-60">
-          {slug && (
-            <span className="font-mono">
-              {type === "theme" ? "/t/" : "/c/"}
-              {slug}
-            </span>
-          )}
+          {slug && <span className="font-mono">{type === "theme" ? "/t/" : "/c/"}{slug}</span>}
         </div>
         <button
           onClick={() => setVisible(false)}
           className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-white/20 transition-colors"
           aria-label="Dismiss banner"
         >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M6 18L18 6M6 6l12 12"
-            />
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
@@ -416,9 +352,7 @@ function StartupLoader({ loader }) {
       {loader.type === "spinner" && (
         <div
           className="w-12 h-12 border-4 border-t-transparent rounded-full animate-spin"
-          style={{
-            borderColor: `${loader.spinnerColor || "#6366f1"} transparent transparent transparent`,
-          }}
+          style={{ borderColor: `${loader.spinnerColor || "#6366f1"} transparent transparent transparent` }}
         />
       )}
       {loader.type === "progress" && (
@@ -436,11 +370,7 @@ function StartupLoader({ loader }) {
         </div>
       )}
       {loader.type === "image" && loader.image && (
-        <img
-          src={loader.image}
-          alt="Loading"
-          className="max-h-24 max-w-xs object-contain animate-pulse"
-        />
+        <img src={loader.image} alt="Loading" className="max-h-24 max-w-xs object-contain animate-pulse" />
       )}
       {loader.type === "svg" && loader.svg && (
         <div dangerouslySetInnerHTML={{ __html: loader.svg }} />
@@ -453,47 +383,26 @@ function EmptyState() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-gray-50 text-center px-4">
       <div className="w-16 h-16 rounded-2xl bg-gray-200 flex items-center justify-center">
-        <svg
-          className="w-8 h-8 text-gray-400"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
+        <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
             d="M4 5a1 1 0 011-1h4a1 1 0 011 1v5a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v2a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10-2a1 1 0 011-1h4a1 1 0 011 1v6a1 1 0 01-1 1h-4a1 1 0 01-1-1v-6z"
           />
         </svg>
       </div>
       <h2 className="text-lg font-semibold text-gray-800">No sections yet</h2>
       <p className="text-sm text-gray-500 max-w-xs">
-        This theme has no content sections. Add sections in the editor to see
-        them here.
+        This theme has no content sections. Add sections in the editor to see them here.
       </p>
     </div>
   );
 }
 
 function buildGoogleFontsUrl(fontNames) {
-  const systemFonts = new Set([
-    "system-ui",
-    "Arial",
-    "Georgia",
-    "serif",
-    "sans-serif",
-    "monospace",
-    "Inter",
-  ]);
-  const toLoad = [...new Set(fontNames)].filter(
-    (f) => f && !systemFonts.has(f),
-  );
+  const systemFonts = new Set(["system-ui", "Arial", "Georgia", "serif", "sans-serif", "monospace", "Inter"]);
+  const toLoad = [...new Set(fontNames)].filter((f) => f && !systemFonts.has(f));
   if (toLoad.length === 0) return null;
   const families = toLoad
-    .map(
-      (f) => `family=${encodeURIComponent(f)}:wght@300;400;500;600;700;800;900`,
-    )
+    .map((f) => `family=${encodeURIComponent(f)}:wght@300;400;500;600;700;800;900`)
     .join("&");
   return `https://fonts.googleapis.com/css2?${families}&display=swap`;
 }

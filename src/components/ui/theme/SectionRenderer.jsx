@@ -43,6 +43,14 @@ export default function SectionRenderer({
     return [];
   };
 
+const resolveLink = (href) => {
+  if (!href || /^([a-z]+:|#)/i.test(href)) return href;
+  if (!selectedWebsite?.slug) return href;
+
+  const base = `/c/${selectedWebsite.slug}`;
+  return `${base}${href.startsWith("/") ? href : `/${href}`}`;
+};
+
   useEffect(() => {
     let interval;
     if (isCarousel && carousel?.autoplay) {
@@ -211,8 +219,7 @@ export default function SectionRenderer({
       WebkitBackdropFilter: p.blur ? "blur(12px)" : "none",
       // sticky only works when the element is directly inside the scroll container
       // In editor (canvas) we keep it relative so it doesn't escape the canvas scroll area
-      position:
-        p.sticky && isPreview ? "sticky" : p.sticky ? "sticky" : "relative",
+      position: p.sticky ? "sticky" : "relative",
       top: 0,
       zIndex: 100,
       borderBottom: p.borderBottom
@@ -220,39 +227,39 @@ export default function SectionRenderer({
         : "none",
     };
 
-    const renderNavLinks = () => (
-      <nav className="hidden md:flex items-center gap-6">
-        {(p.menu || []).map((item, idx) => (
-          <div key={idx} className="relative group/nav">
-            <a
-              href={item.url || "#"}
-              onClick={handleLinkClick}
-              className="flex items-center gap-1 text-sm font-medium transition-colors hover:opacity-70"
-              style={{ color: p.textColor || "#111827" }}
-            >
-              {item.label}
-              {item.hasSubmenu && item.submenu?.length > 0 && (
-                <LucideIcons.ChevronDown className="w-3.5 h-3.5" />
-              )}
-            </a>
-            {item.hasSubmenu && item.submenu?.length > 0 && (
-              <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 opacity-0 invisible group-hover/nav:opacity-100 group-hover/nav:visible transition-all z-50">
-                {item.submenu.map((sub, sIdx) => (
-                  <a
-                    key={sIdx}
-                    href={sub.url || "#"}
-                    onClick={handleLinkClick}
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
-                  >
-                    {sub.label}
-                  </a>
-                ))}
-              </div>
-            )}
+   const renderNavLinks = () => (
+  <nav className="hidden md:flex items-center gap-6">
+    {(p.menu || []).map((item, idx) => (
+      <div key={idx} className="relative group/nav">
+        <a
+          href={resolveLink(item.url || "#")}
+          onClick={handleLinkClick}
+          className="flex items-center gap-1 text-sm font-medium transition-colors hover:opacity-70"
+          style={{ color: p.textColor || "#111827" }}
+        >
+          {item.label}
+          {item.hasSubmenu && item.submenu?.length > 0 && (
+            <LucideIcons.ChevronDown className="w-3.5 h-3.5" />
+          )}
+        </a>
+        {item.hasSubmenu && item.submenu?.length > 0 && (
+          <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 opacity-0 invisible group-hover/nav:opacity-100 group-hover/nav:visible transition-all z-50">
+            {item.submenu.map((sub, sIdx) => (
+              <a
+                key={sIdx}
+                href={resolveLink(sub.url || "#")}
+                onClick={handleLinkClick}
+                className="block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
+              >
+                {sub.label}
+              </a>
+            ))}
           </div>
-        ))}
-      </nav>
-    );
+        )}
+      </div>
+    ))}
+  </nav>
+);
 
     const renderSearch = () =>
       p.showSearch && (
@@ -284,33 +291,33 @@ export default function SectionRenderer({
       );
 
     const renderCta = () =>
-      p.showCta &&
-      p.ctaText && (
-        <a
-          href={p.ctaLink || "#"}
-          onClick={handleLinkClick}
-          className="hidden md:inline-flex items-center px-5 py-2 rounded-lg text-sm font-semibold transition-all"
-          style={
-            p.ctaStyle === "outline"
-              ? {
-                  border: `2px solid ${p.ctaColor || primaryColor}`,
-                  color: p.ctaColor || primaryColor,
-                  backgroundColor: "transparent",
-                }
-              : {
-                  backgroundColor: p.ctaColor || primaryColor,
-                  color: p.ctaTextColor || "#ffffff",
-                }
-          }
-        >
-          {p.ctaText}
-        </a>
-      );
+  p.showCta &&
+  p.ctaText && (
+    <a
+      href={resolveLink(p.ctaLink || "#")}
+      onClick={handleLinkClick}
+      className="hidden md:inline-flex items-center px-5 py-2 rounded-lg text-sm font-semibold transition-all"
+      style={
+        p.ctaStyle === "outline"
+          ? {
+              border: `2px solid ${p.ctaColor || primaryColor}`,
+              color: p.ctaColor || primaryColor,
+              backgroundColor: "transparent",
+            }
+          : {
+              backgroundColor: p.ctaColor || primaryColor,
+              color: p.ctaTextColor || "#ffffff",
+            }
+      }
+    >
+      {p.ctaText}
+    </a>
+  );
 
     const renderLogo = () =>
       p.showLogo && (
         <a
-          href={`/c/${selectedWebsite?.slug}`}
+          href={resolveLink(`/c/${selectedWebsite?.slug}`)}
           onClick={handleLinkClick}
           className="flex-shrink-0 flex items-center gap-2"
         >
@@ -365,7 +372,7 @@ export default function SectionRenderer({
             {(p.menu || []).map((item, idx) => (
               <div key={idx}>
                 <a
-                  href={item.url || "#"}
+                  href={resolveLink(item.url || "#")}
                   onClick={(e) => {
                     if (!isPreview) e.preventDefault();
                     if (item.hasSubmenu)
@@ -386,7 +393,7 @@ export default function SectionRenderer({
                     {item.submenu.map((sub, sIdx) => (
                       <a
                         key={sIdx}
-                        href={sub.url || "#"}
+                        href={resolveLink(sub.url || "#")}
                         onClick={handleLinkClick}
                         className="block px-3 py-2 text-sm text-gray-500 hover:text-gray-900 rounded-lg transition-colors"
                       >
@@ -410,7 +417,7 @@ export default function SectionRenderer({
             {p.showCta && p.ctaText && (
               <div className="pt-2">
                 <a
-                  href={p.ctaLink || "#"}
+                  href={resolveLink(p.ctaLink || "#")}
                   onClick={handleLinkClick}
                   className="block text-center px-5 py-2.5 rounded-lg text-sm font-semibold"
                   style={{
@@ -460,7 +467,7 @@ export default function SectionRenderer({
             {leftMenu.map((item, idx) => (
               <a
                 key={idx}
-                href={item.url || "#"}
+                href={resolveLink(item.url || "#")}
                 onClick={handleLinkClick}
                 className="text-sm font-medium transition-colors hover:opacity-70"
                 style={{ color: p.textColor || "#111827" }}
@@ -475,7 +482,7 @@ export default function SectionRenderer({
               {rightMenu.map((item, idx) => (
                 <a
                   key={idx}
-                  href={item.url || "#"}
+                  href={resolveLink(item.url || "#")}
                   onClick={handleLinkClick}
                   className="text-sm font-medium transition-colors hover:opacity-70"
                   style={{ color: p.textColor || "#111827" }}
@@ -619,7 +626,7 @@ export default function SectionRenderer({
                   .map((link, i) => (
                     <a
                       key={i}
-                      href={link.url || "#"}
+                      href={resolveLink(link.url || "#")}
                       onClick={handleLinkClick}
                       className="text-sm transition-colors hover:opacity-100"
                       style={{ color: p.linkColor || "#9ca3af" }}
@@ -633,7 +640,7 @@ export default function SectionRenderer({
                   {(p.socialLinks || []).map((s, i) => (
                     <a
                       key={i}
-                      href={s.url || "#"}
+                      href={resolveLink(s.url || "#")}
                       target={isPreview ? "_blank" : undefined}
                       rel="noopener noreferrer"
                       onClick={handleLinkClick}
@@ -700,7 +707,7 @@ export default function SectionRenderer({
                 .map((link, i) => (
                   <a
                     key={i}
-                    href={link.url || "#"}
+                    href={resolveLink(link.url || "#")}
                     onClick={handleLinkClick}
                     className="text-sm transition-colors hover:opacity-100"
                     style={{ color: p.linkColor || "#9ca3af" }}
@@ -714,7 +721,7 @@ export default function SectionRenderer({
                 {(p.socialLinks || []).map((s, i) => (
                   <a
                     key={i}
-                    href={s.url || "#"}
+                    href={resolveLink(s.url || "#")}
                     target={isPreview ? "_blank" : undefined}
                     rel="noopener noreferrer"
                     onClick={handleLinkClick}
@@ -771,7 +778,7 @@ export default function SectionRenderer({
                 {(p.socialLinks || []).map((s, i) => (
                   <a
                     key={i}
-                    href={s.url || "#"}
+                    href={resolveLink(s.url || "#")}
                     target={isPreview ? "_blank" : undefined}
                     rel="noopener noreferrer"
                     onClick={handleLinkClick}
@@ -840,7 +847,7 @@ export default function SectionRenderer({
                     {(p.socialLinks || []).map((s, i) => (
                       <a
                         key={i}
-                        href={s.url || "#"}
+                        href={resolveLink(s.url || "#")}
                         target={isPreview ? "_blank" : undefined}
                         rel="noopener noreferrer"
                         onClick={handleLinkClick}
@@ -868,7 +875,7 @@ export default function SectionRenderer({
                   {(col.links || []).map((link, lIdx) => (
                     <li key={lIdx}>
                       <a
-                        href={link.url || "#"}
+                        href={resolveLink(link.url || "#")}
                         onClick={handleLinkClick}
                         className="text-sm transition-colors hover:opacity-100"
                         style={{ color: p.linkColor || "#9ca3af" }}
@@ -1007,7 +1014,7 @@ export default function SectionRenderer({
               </p>
               {slide.ctaText && (
                 <a
-                  href={slide.ctaLink || "#"}
+                  href={resolveLink(slide.ctaLink || "#")}
                   onClick={handleLinkClick}
                   className="inline-block px-10 py-4 bg-white text-gray-900 rounded-xl font-semibold text-lg hover:bg-gray-100 transition-all shadow-lg"
                 >
@@ -1042,7 +1049,7 @@ export default function SectionRenderer({
                 <div className="flex flex-wrap gap-4">
                   {ctaText && (
                     <a
-                      href={ctaLink || "#"}
+                      href={resolveLink(ctaLink || "#")}
                       onClick={handleLinkClick}
                       className="inline-block px-8 py-4 rounded-xl font-semibold text-lg transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1"
                       style={{
@@ -1055,7 +1062,7 @@ export default function SectionRenderer({
                   )}
                   {secondaryCtaText && (
                     <a
-                      href={secondaryCtaLink || "#"}
+                      href={resolveLink(secondaryCtaLink || "#")}
                       onClick={handleLinkClick}
                       className="inline-block px-8 py-4 border-2 rounded-xl font-semibold transition-all"
                       style={{
@@ -1114,7 +1121,7 @@ export default function SectionRenderer({
           >
             {ctaText && (
               <a
-                href={ctaLink || "#"}
+                href={resolveLink(ctaLink || "#")}
                 onClick={handleLinkClick}
                 className="inline-block px-10 py-4 rounded-xl font-semibold text-lg transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1"
                 style={{
@@ -1127,7 +1134,7 @@ export default function SectionRenderer({
             )}
             {secondaryCtaText && (
               <a
-                href={secondaryCtaLink || "#"}
+                href={resolveLink(secondaryCtaLink || "#")}
                 onClick={handleLinkClick}
                 className="inline-block px-10 py-4 border-2 rounded-xl font-semibold transition-all"
                 style={{
@@ -2230,7 +2237,7 @@ export default function SectionRenderer({
                   ))}
                 </ul>
                 <a
-                  href={plan.ctaLink || "#"}
+                  href={resolveLink(plan.ctaLink || "#")}
                   onClick={handleLinkClick}
                   className={`block w-full py-4 rounded-xl font-bold text-lg text-center transition-all ${plan.highlighted ? "text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1" : "bg-gray-100 hover:bg-gray-200"}`}
                   style={{
