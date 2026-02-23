@@ -164,7 +164,6 @@ export const SECTION_LIBRARY = [
         title: "Stay Updated",
         placeholder: "Enter your email",
         buttonText: "Subscribe",
-        submitUrl: "",
         successMessage: "Thanks for subscribing!",
         errorMessage: "Something went wrong.",
       },
@@ -470,7 +469,6 @@ export const SECTION_LIBRARY = [
       buttonColor: "#6366f1",
       buttonTextColor: "#ffffff",
       submitText: "Send Message",
-      submitUrl: "",
       successMessage: "Thanks! We'll get back to you soon.",
       errorMessage: "Something went wrong. Please try again.",
       fields: [
@@ -542,7 +540,6 @@ export const SECTION_LIBRARY = [
       benefitColor: "rgba(255,255,255,0.75)",
       placeholder: "Enter your email",
       buttonText: "Subscribe",
-      submitUrl: "",
       successMessage: "Thanks for subscribing!",
       errorMessage: "Something went wrong. Please try again.",
       benefits: ["Weekly insights", "Exclusive content", "Early access"],

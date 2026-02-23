@@ -56,16 +56,16 @@ export default function ThemeEditor() {
         onToggleSettings={() => setShowSettings(!showSettings)}
       />
 
-      <div className="flex-1 flex overflow-hidden">
-        <div className="w-64 flex-shrink-0">
+      <div className="flex-1 flex min-h-0">
+        <div className="w-64 flex-shrink-0 overflow-y-auto">
           <SectionLibrary onAddSection={handleAddSection} />
         </div>
 
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 min-w-0 overflow-y-auto">
           <Canvas selectedTemplate={selectedTemplate} />
         </div>
 
-        <div className="w-80 flex-shrink-0">
+        <div className="w-80 flex-shrink-0 overflow-y-auto">
           <PropertiesPanel />
         </div>
       </div>

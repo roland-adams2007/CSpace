@@ -1,11 +1,15 @@
 import { SECTION_TYPES } from "../../../utils/sectionLibrary";
 import * as LucideIcons from "lucide-react";
 import { useState, useEffect, useRef } from "react";
+import axiosInstance from "../../../api/axiosInstance";
+import { useWebsiteStore } from "../../../store/store";
 
 export default function SectionRenderer({ section, themeColors }) {
+  const { selectedWebsite } = useWebsiteStore();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openSubmenu, setOpenSubmenu] = useState(null);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [formState, setFormState] = useState({ loading: false, success: false, error: false, message: "" });
   const carousel = section.props.carousel;
   const variant = section.props.variant || "default";
@@ -111,34 +115,29 @@ export default function SectionRenderer({ section, themeColors }) {
   const prev = (len) => setCurrentSlide((p) => (p - 1 + len) % len);
   const next = (len) => setCurrentSlide((p) => (p + 1) % len);
 
-  const handleFormSubmit = async (e, submitUrl, successMessage, errorMessage, setLocalState) => {
+  const handleFormSubmit = async (e, successMessage, errorMessage, setLocalState) => {
     e.preventDefault();
-    if (!submitUrl) {
-      setLocalState({ loading: false, success: true, error: false, message: successMessage || "Submitted!" });
-      return;
-    }
     setLocalState({ loading: true, success: false, error: false, message: "" });
     try {
       const formData = new FormData(e.target);
       const data = Object.fromEntries(formData.entries());
-      const res = await fetch(submitUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify(data),
+      await axiosInstance.post("/forms/submit", {
+        website_id: selectedWebsite?.id,
+        section_id: section.id,
+        section_type: section.type,
+        data,
       });
-      if (res.ok) {
-        setLocalState({ loading: false, success: true, error: false, message: successMessage || "Submitted!" });
-        e.target.reset();
-      } else {
-        setLocalState({ loading: false, success: false, error: true, message: errorMessage || "Something went wrong." });
-      }
+      setLocalState({ loading: false, success: true, error: false, message: successMessage || "Message sent!" });
+      e.target.reset();
     } catch {
-      setLocalState({ loading: false, success: false, error: true, message: errorMessage || "Something went wrong." });
+      setLocalState({ loading: false, success: false, error: true, message: errorMessage || "Something went wrong. Please try again." });
     }
   };
 
   const renderHeader = () => {
     const p = section.props;
+    const logoHeight = p.logoHeight || 40;
+
     const containerStyle = {
       height: p.height || "80px",
       backgroundColor: p.transparent ? "transparent" : p.backgroundColor || "#ffffff",
@@ -146,7 +145,7 @@ export default function SectionRenderer({ section, themeColors }) {
       WebkitBackdropFilter: p.blur ? "blur(12px)" : "none",
       position: p.sticky ? "sticky" : "relative",
       top: 0,
-      zIndex: 50,
+      zIndex: 100,
       borderBottom: p.borderBottom ? `1px solid ${p.borderColor || "#e5e7eb"}` : "none",
     };
 
@@ -181,9 +180,39 @@ export default function SectionRenderer({ section, themeColors }) {
     );
 
     const renderSearch = () => p.showSearch && (
-      <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-lg">
-        <LucideIcons.Search className="w-4 h-4 text-gray-400" />
-        <input type="text" placeholder="Search..." className="bg-transparent text-sm outline-none w-32 text-gray-700 placeholder-gray-400" />
+      <div className="flex items-center relative">
+        {searchOpen ? (
+          <div
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all"
+            style={{ backgroundColor: p.transparent ? "rgba(255,255,255,0.15)" : "#f3f4f6" }}
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            <LucideIcons.Search className="w-4 h-4 flex-shrink-0" style={{ color: p.searchIconColor || p.textColor || "#6b7280" }} />
+            <input
+              autoFocus
+              type="text"
+              placeholder="Search..."
+              className="bg-transparent text-sm outline-none w-36"
+              style={{ color: p.textColor || "#111827" }}
+              onBlur={() => setSearchOpen(false)}
+            />
+            <button
+              onMouseDown={(e) => { e.preventDefault(); setSearchOpen(false); }}
+              className="flex-shrink-0 opacity-60 hover:opacity-100 transition-opacity"
+            >
+              <LucideIcons.X className="w-3.5 h-3.5" style={{ color: p.textColor || "#6b7280" }} />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="p-2 rounded-lg transition-colors hover:opacity-70"
+            style={{ color: p.searchIconColor || p.textColor || "#111827" }}
+            title="Search"
+          >
+            <LucideIcons.Search className="w-5 h-5" />
+          </button>
+        )}
       </div>
     );
 
@@ -204,7 +233,7 @@ export default function SectionRenderer({ section, themeColors }) {
     const renderLogo = () => p.showLogo && (
       <a href="/" onClick={(e) => e.preventDefault()} className="flex-shrink-0 flex items-center gap-2">
         {p.logo
-          ? <img src={p.logo} alt="Logo" className="h-9 object-contain" />
+          ? <img src={p.logo} alt="Logo" style={{ height: `${logoHeight}px`, width: "auto", objectFit: "contain" }} />
           : <span className="text-lg font-bold" style={{ color: p.textColor || "#111827" }}>{p.logoText || "Brand"}</span>
         }
       </a>
@@ -326,6 +355,7 @@ export default function SectionRenderer({ section, themeColors }) {
         <div className="flex items-center justify-between w-full">
           {renderLogo()}
           <div className="flex items-center gap-4">
+            {renderSearch()}
             {renderCta()}
             {renderMobileToggle()}
           </div>
@@ -360,6 +390,7 @@ export default function SectionRenderer({ section, themeColors }) {
   const renderFooter = () => {
     const p = section.props;
     const [newsletterState, setNewsletterState] = useState({ loading: false, success: false, error: false, message: "" });
+    const logoHeight = p.logoHeight || 40;
 
     const containerStyle = {
       backgroundColor: p.backgroundColor || "#111827",
@@ -370,27 +401,26 @@ export default function SectionRenderer({ section, themeColors }) {
     const handleNewsletterSubmit = async (e) => {
       e.preventDefault();
       const email = e.target.email?.value;
-      if (!p.newsletter?.submitUrl) {
-        setNewsletterState({ loading: false, success: true, error: false, message: p.newsletter?.successMessage || "Subscribed!" });
-        return;
-      }
       setNewsletterState({ loading: true, success: false, error: false, message: "" });
       try {
-        const res = await fetch(p.newsletter.submitUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify({ email }),
+        await axiosInstance.post("/forms/submit", {
+          website_id: selectedWebsite?.id,
+          section_id: section.id,
+          section_type: "footer_newsletter",
+          data: { email },
         });
-        if (res.ok) {
-          setNewsletterState({ loading: false, success: true, error: false, message: p.newsletter.successMessage || "Subscribed!" });
-          e.target.reset();
-        } else {
-          setNewsletterState({ loading: false, success: false, error: true, message: p.newsletter.errorMessage || "Error." });
-        }
+        setNewsletterState({ loading: false, success: true, error: false, message: p.newsletter?.successMessage || "Subscribed!" });
+        e.target.reset();
       } catch {
-        setNewsletterState({ loading: false, success: false, error: true, message: p.newsletter.errorMessage || "Error." });
+        setNewsletterState({ loading: false, success: false, error: true, message: p.newsletter?.errorMessage || "Something went wrong. Please try again." });
       }
     };
+
+    const LogoEl = () => p.showLogo && (
+      p.logo
+        ? <img src={p.logo} alt="Logo" style={{ height: `${logoHeight}px`, width: "auto", objectFit: "contain" }} />
+        : <span className="text-lg font-bold" style={{ color: p.logoTextColor || p.textColor || "#ffffff" }}>{p.logoText || "Brand"}</span>
+    );
 
     if (variant === "simple") {
       return (
@@ -400,7 +430,7 @@ export default function SectionRenderer({ section, themeColors }) {
               <div className="flex items-center gap-3">
                 {p.showLogo && (
                   p.logo
-                    ? <img src={p.logo} alt="Logo" className="h-8 object-contain" />
+                    ? <img src={p.logo} alt="Logo" style={{ height: `${logoHeight}px`, objectFit: "contain" }} />
                     : <span className="text-lg font-bold" style={{ color: p.logoTextColor || p.textColor || "#ffffff" }}>{p.logoText || "Brand"}</span>
                 )}
                 {p.tagline && <span className="text-sm" style={{ color: p.taglineColor || "rgba(255,255,255,0.6)" }}>{p.tagline}</span>}
@@ -437,9 +467,9 @@ export default function SectionRenderer({ section, themeColors }) {
         <div style={containerStyle}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             {p.showLogo && (
-              <div className="mb-6">
+              <div className="mb-6 flex justify-center">
                 {p.logo
-                  ? <img src={p.logo} alt="Logo" className="h-10 object-contain mx-auto" />
+                  ? <img src={p.logo} alt="Logo" style={{ height: `${logoHeight}px`, objectFit: "contain" }} />
                   : <span className="text-xl font-bold" style={{ color: p.logoTextColor || p.textColor || "#ffffff" }}>{p.logoText || "Brand"}</span>
                 }
               </div>
@@ -475,7 +505,7 @@ export default function SectionRenderer({ section, themeColors }) {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
             {p.showLogo && (
               p.logo
-                ? <img src={p.logo} alt="Logo" className="h-7 object-contain" />
+                ? <img src={p.logo} alt="Logo" style={{ height: `${logoHeight}px`, objectFit: "contain" }} />
                 : <span className="text-base font-bold" style={{ color: p.logoTextColor || p.textColor || "#ffffff" }}>{p.logoText || "Brand"}</span>
             )}
             {p.copyright && <p className="text-xs" style={{ color: p.copyrightColor || "rgba(255,255,255,0.4)" }}>{p.copyright}</p>}
@@ -507,7 +537,7 @@ export default function SectionRenderer({ section, themeColors }) {
                 {p.showLogo && (
                   <div className="mb-4">
                     {p.logo
-                      ? <img src={p.logo} alt="Logo" className="h-10 object-contain" />
+                      ? <img src={p.logo} alt="Logo" style={{ height: `${logoHeight}px`, objectFit: "contain" }} />
                       : <span className="text-lg font-bold" style={{ color: p.logoTextColor || p.textColor || "#ffffff" }}>{p.logoText || "Brand"}</span>
                     }
                   </div>
@@ -1114,7 +1144,7 @@ export default function SectionRenderer({ section, themeColors }) {
   };
 
   const renderContact = () => {
-    const { heading, subheading, fields = [], submitText, submitUrl, successMessage, errorMessage, headingColor, subheadingColor, cardBackground, labelColor, inputBorderColor, inputFocusColor, buttonColor, buttonTextColor } = section.props;
+    const { heading, subheading, fields = [], submitText, successMessage, errorMessage, headingColor, subheadingColor, cardBackground, labelColor, inputBorderColor, inputFocusColor, buttonColor, buttonTextColor } = section.props;
     const [localState, setLocalState] = useState({ loading: false, success: false, error: false, message: "" });
     const overlayStyle = getOverlayStyle();
     return (
@@ -1129,7 +1159,7 @@ export default function SectionRenderer({ section, themeColors }) {
                 <p className="text-lg font-medium text-gray-900">{localState.message || successMessage || "Message sent!"}</p>
               </div>
             ) : (
-              <form onSubmit={(e) => handleFormSubmit(e, submitUrl, successMessage, errorMessage, setLocalState)} className="space-y-6">
+              <form onSubmit={(e) => handleFormSubmit(e, successMessage, errorMessage, setLocalState)} className="space-y-6">
                 {fields.map((field) => (
                   <div key={field.id}>
                     <label className="block text-sm font-semibold mb-2" style={{ color: labelColor || "#374151" }}>
@@ -1206,23 +1236,26 @@ export default function SectionRenderer({ section, themeColors }) {
   };
 
   const renderNewsletter = () => {
-    const { heading, subheading, placeholder, buttonText, benefits = [], submitUrl, successMessage, errorMessage, headingColor, subheadingColor, inputBackground, inputTextColor, inputBorderColor, buttonColor, buttonTextColor, benefitColor } = section.props;
+    const { heading, subheading, placeholder, buttonText, benefits = [], successMessage, errorMessage, headingColor, subheadingColor, inputBackground, inputTextColor, inputBorderColor, buttonColor, buttonTextColor, benefitColor } = section.props;
     const [localState, setLocalState] = useState({ loading: false, success: false, error: false, message: "" });
     const overlayStyle = getOverlayStyle();
 
     const handleSubmit = async (e) => {
       e.preventDefault();
       const email = e.target.email?.value;
-      if (!submitUrl) {
-        setLocalState({ loading: false, success: true, error: false, message: successMessage || "Subscribed!" });
-        return;
-      }
       setLocalState({ loading: true, success: false, error: false, message: "" });
       try {
-        const res = await fetch(submitUrl, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ email }) });
-        if (res.ok) { setLocalState({ loading: false, success: true, error: false, message: successMessage || "Subscribed!" }); e.target.reset(); }
-        else { setLocalState({ loading: false, success: false, error: true, message: errorMessage || "Error." }); }
-      } catch { setLocalState({ loading: false, success: false, error: true, message: errorMessage || "Error." }); }
+        await axiosInstance.post("/forms/submit", {
+          website_id: selectedWebsite?.id,
+          section_id: section.id,
+          section_type: section.type,
+          data: { email },
+        });
+        setLocalState({ loading: false, success: true, error: false, message: successMessage || "Subscribed!" });
+        e.target.reset();
+      } catch {
+        setLocalState({ loading: false, success: false, error: true, message: errorMessage || "Something went wrong. Please try again." });
+      }
     };
 
     return (

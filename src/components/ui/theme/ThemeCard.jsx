@@ -11,6 +11,7 @@ export default function ThemeCard({ theme, onSetActive, onDelete, onDuplicate, w
   const navigate = useNavigate();
 
   const isActive = theme.is_active === 1;
+
   const isTemplate = theme.template_id !== null;
 
   useEffect(() => {
@@ -57,6 +58,11 @@ export default function ThemeCard({ theme, onSetActive, onDelete, onDuplicate, w
 
   const handlePreview = () => {
     window.open(`${import.meta.env.VITE_APP_URL}/t/${theme.slug}`, "_blank");
+  };
+
+  const handleSetActive = () => {
+    onSetActive(theme.id);
+    setShowMenu(false);
   };
 
   const getStatusBadge = () => {
@@ -199,18 +205,23 @@ export default function ThemeCard({ theme, onSetActive, onDelete, onDuplicate, w
                 }}
                 className="w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1 overflow-hidden"
               >
+                {/* Only show "Set as Active" if this theme is NOT active */}
                 {!isActive && (
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSetActive(theme.id);
-                      setShowMenu(false);
-                    }}
+                    onClick={handleSetActive}
                     className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center transition-colors"
                   >
                     <CheckCircle className="w-4 h-4 mr-2 text-emerald-500" />
                     Set as Active
                   </button>
+                )}
+
+                {/* If theme is active, show that it's active (disabled state) */}
+                {isActive && (
+                  <div className="w-full px-4 py-2 text-left text-sm text-gray-400 bg-gray-50 flex items-center cursor-not-allowed">
+                    <CheckCircle className="w-4 h-4 mr-2 text-emerald-500" />
+                    Active Theme
+                  </div>
                 )}
 
                 <button
