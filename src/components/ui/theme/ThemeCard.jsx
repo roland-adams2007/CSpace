@@ -1,8 +1,21 @@
-import { Eye, MoreVertical, Edit3, CheckCircle, Trash2, Copy } from "lucide-react";
+import {
+  Eye,
+  MoreVertical,
+  Edit3,
+  CheckCircle,
+  Trash2,
+  Copy,
+} from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-export default function ThemeCard({ theme, onSetActive, onDelete, onDuplicate, websiteSlug }) {
+export default function ThemeCard({
+  theme,
+  onSetActive,
+  onDelete,
+  onDuplicate,
+  websiteSlug,
+}) {
   const [showMenu, setShowMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState("bottom");
   const [showTooltip, setShowTooltip] = useState(false);
@@ -57,7 +70,10 @@ export default function ThemeCard({ theme, onSetActive, onDelete, onDuplicate, w
   };
 
   const handlePreview = () => {
-    window.open(`${import.meta.env.VITE_APP_URL}/t/${theme.slug}`, "_blank");
+    window.open(
+      `${import.meta.env.VITE_APP_URL}/t/${theme.slug}?preview=true`,
+      "_blank",
+    );
   };
 
   const handleSetActive = () => {
@@ -111,7 +127,9 @@ export default function ThemeCard({ theme, onSetActive, onDelete, onDuplicate, w
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 flex flex-col">
-      <div className={`h-32 bg-gradient-to-br ${getGradientColor()} relative flex items-center justify-center`}>
+      <div
+        className={`h-32 bg-gradient-to-br ${getGradientColor()} relative flex items-center justify-center`}
+      >
         <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap">
           {getStatusBadge()}
           {theme.template_name && (

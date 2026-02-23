@@ -123,7 +123,7 @@ export default function Preview() {
     }
   }, [themeSlug, websiteSlug, isPreviewMode]);
 
-  if (loading) {
+  if (loading && isPreviewMode) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4">
         <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
