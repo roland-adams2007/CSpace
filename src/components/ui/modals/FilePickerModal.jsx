@@ -9,7 +9,7 @@ import {
 import { useAssetStore } from "../../../store/store";
 import { fileToBase64 } from "../../../utils/fileToBase64";
 import Pagination from "../Pagination";
-import { ImageCard } from "../ImageCard";
+import { ImageCard } from "../file-manager/ImageCard";
 
 export default function FilePickerModal({
   isOpen,
