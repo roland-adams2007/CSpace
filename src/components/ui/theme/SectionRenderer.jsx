@@ -43,13 +43,13 @@ export default function SectionRenderer({
     return [];
   };
 
-const resolveLink = (href) => {
-  if (!href || /^([a-z]+:|#)/i.test(href)) return href;
-  if (!selectedWebsite?.slug) return href;
+  const resolveLink = (href) => {
+    if (!href || /^([a-z]+:|#)/i.test(href)) return href;
+    if (!selectedWebsite?.slug) return href;
 
-  const base = `/c/${selectedWebsite.slug}`;
-  return `${base}${href.startsWith("/") ? href : `/${href}`}`;
-};
+    const base = `/c/${selectedWebsite.slug}`;
+    return `${base}${href.startsWith("/") ? href : `/${href}`}`;
+  };
 
   useEffect(() => {
     let interval;
@@ -227,39 +227,39 @@ const resolveLink = (href) => {
         : "none",
     };
 
-   const renderNavLinks = () => (
-  <nav className="hidden md:flex items-center gap-6">
-    {(p.menu || []).map((item, idx) => (
-      <div key={idx} className="relative group/nav">
-        <a
-          href={resolveLink(item.url || "#")}
-          onClick={handleLinkClick}
-          className="flex items-center gap-1 text-sm font-medium transition-colors hover:opacity-70"
-          style={{ color: p.textColor || "#111827" }}
-        >
-          {item.label}
-          {item.hasSubmenu && item.submenu?.length > 0 && (
-            <LucideIcons.ChevronDown className="w-3.5 h-3.5" />
-          )}
-        </a>
-        {item.hasSubmenu && item.submenu?.length > 0 && (
-          <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 opacity-0 invisible group-hover/nav:opacity-100 group-hover/nav:visible transition-all z-50">
-            {item.submenu.map((sub, sIdx) => (
-              <a
-                key={sIdx}
-                href={resolveLink(sub.url || "#")}
-                onClick={handleLinkClick}
-                className="block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
-              >
-                {sub.label}
-              </a>
-            ))}
+    const renderNavLinks = () => (
+      <nav className="hidden md:flex items-center gap-6">
+        {(p.menu || []).map((item, idx) => (
+          <div key={idx} className="relative group/nav">
+            <a
+              href={resolveLink(item.url || "#")}
+              onClick={handleLinkClick}
+              className="flex items-center gap-1 text-sm font-medium transition-colors hover:opacity-70"
+              style={{ color: p.textColor || "#111827" }}
+            >
+              {item.label}
+              {item.hasSubmenu && item.submenu?.length > 0 && (
+                <LucideIcons.ChevronDown className="w-3.5 h-3.5" />
+              )}
+            </a>
+            {item.hasSubmenu && item.submenu?.length > 0 && (
+              <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 opacity-0 invisible group-hover/nav:opacity-100 group-hover/nav:visible transition-all z-50">
+                {item.submenu.map((sub, sIdx) => (
+                  <a
+                    key={sIdx}
+                    href={resolveLink(sub.url || "#")}
+                    onClick={handleLinkClick}
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
+                  >
+                    {sub.label}
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </div>
-    ))}
-  </nav>
-);
+        ))}
+      </nav>
+    );
 
     const renderSearch = () =>
       p.showSearch && (
@@ -291,33 +291,33 @@ const resolveLink = (href) => {
       );
 
     const renderCta = () =>
-  p.showCta &&
-  p.ctaText && (
-    <a
-      href={resolveLink(p.ctaLink || "#")}
-      onClick={handleLinkClick}
-      className="hidden md:inline-flex items-center px-5 py-2 rounded-lg text-sm font-semibold transition-all"
-      style={
-        p.ctaStyle === "outline"
-          ? {
-              border: `2px solid ${p.ctaColor || primaryColor}`,
-              color: p.ctaColor || primaryColor,
-              backgroundColor: "transparent",
-            }
-          : {
-              backgroundColor: p.ctaColor || primaryColor,
-              color: p.ctaTextColor || "#ffffff",
-            }
-      }
-    >
-      {p.ctaText}
-    </a>
-  );
+      p.showCta &&
+      p.ctaText && (
+        <a
+          href={resolveLink(p.ctaLink || "#")}
+          onClick={handleLinkClick}
+          className="hidden md:inline-flex items-center px-5 py-2 rounded-lg text-sm font-semibold transition-all"
+          style={
+            p.ctaStyle === "outline"
+              ? {
+                border: `2px solid ${p.ctaColor || primaryColor}`,
+                color: p.ctaColor || primaryColor,
+                backgroundColor: "transparent",
+              }
+              : {
+                backgroundColor: p.ctaColor || primaryColor,
+                color: p.ctaTextColor || "#ffffff",
+              }
+          }
+        >
+          {p.ctaText}
+        </a>
+      );
 
     const renderLogo = () =>
       p.showLogo && (
         <a
-          href={resolveLink(`/c/${selectedWebsite?.slug}`)}
+          href={resolveLink(`/`)}
           onClick={handleLinkClick}
           className="flex-shrink-0 flex items-center gap-2"
         >
@@ -799,15 +799,14 @@ const resolveLink = (href) => {
       <div style={containerStyle}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div
-            className={`grid gap-8 mb-8 ${
-              (p.columns?.length || 0) === 0
+            className={`grid gap-8 mb-8 ${(p.columns?.length || 0) === 0
                 ? "grid-cols-1"
                 : (p.columns?.length || 0) <= 2
                   ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-4"
                   : (p.columns?.length || 0) === 3
                     ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-4"
                     : "grid-cols-1 md:grid-cols-2 lg:grid-cols-5"
-            }`}
+              }`}
           >
             {(p.showLogo || p.tagline) && (
               <div className="lg:col-span-2">
@@ -1624,16 +1623,16 @@ const resolveLink = (href) => {
           <div className={gridCls}>
             {items.length > 0
               ? items.map((item, idx) => (
-                  <GalleryItem key={item.id || idx} item={item} idx={idx} />
-                ))
+                <GalleryItem key={item.id || idx} item={item} idx={idx} />
+              ))
               : Array(6)
-                  .fill(0)
-                  .map((_, idx) => (
-                    <div
-                      key={idx}
-                      className="aspect-square bg-gradient-to-br from-gray-200 to-gray-300 rounded-2xl"
-                    />
-                  ))}
+                .fill(0)
+                .map((_, idx) => (
+                  <div
+                    key={idx}
+                    className="aspect-square bg-gradient-to-br from-gray-200 to-gray-300 rounded-2xl"
+                  />
+                ))}
           </div>
         </div>
       </div>

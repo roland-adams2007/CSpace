@@ -14,6 +14,7 @@ import {
   Settings,
   Layers,
   HardDrive,
+  FileText,
   LogOut,
 } from "lucide-react";
 
@@ -26,7 +27,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
     { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { path: "/website-builder", icon: Edit3, label: "Website Builder" },
     { path: "/files", icon: FolderOpen, label: "File Manager" },
-    { path: "/messages", icon: Inbox, label: "Messages", badge: 8 },
+    { path: "/forms", icon: FileText, label: "Forms" },
     { path: "/automations", icon: Zap, label: "Automations" },
     { path: "/analytics", icon: TrendingUp, label: "Analytics" },
   ];
@@ -46,9 +47,8 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
   return (
     <aside
-      className={`fixed top-0 left-0 h-full w-64 bg-white shadow-lg z-50 transition-transform duration-300 lg:translate-x-0 ${
-        sidebarOpen ? "translate-x-0" : "-translate-x-full"
-      }`}
+      className={`fixed top-0 left-0 h-full w-64 bg-white shadow-lg z-50 transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
     >
       <div className="flex flex-col h-full">
         <div className="px-5 py-5 border-b border-gray-100">
@@ -74,11 +74,10 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
                   navigate(item.path);
                   setSidebarOpen(false);
                 }}
-                className={`sidebar-link flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium w-full text-left transition-colors ${
-                  location.pathname === item.path
-                    ? "bg-indigo-50 text-indigo-600"
-                    : "text-gray-600 hover:bg-gray-50"
-                }`}
+                className={`sidebar-link flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium w-full text-left transition-colors ${location.pathname === item.path
+                  ? "bg-indigo-50 text-indigo-600"
+                  : "text-gray-600 hover:bg-gray-50"
+                  }`}
               >
                 <div className="flex items-center space-x-2.5">
                   <item.icon className="w-4 h-4" />
@@ -105,11 +104,10 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
                     navigate(item.path);
                     setSidebarOpen(false);
                   }}
-                  className={`sidebar-link flex items-center space-x-2.5 px-3 py-2.5 rounded-lg text-sm font-medium w-full text-left transition-colors ${
-                    location.pathname === item.path
-                      ? "bg-indigo-50 text-indigo-600"
-                      : "text-gray-600 hover:bg-gray-50"
-                  }`}
+                  className={`sidebar-link flex items-center space-x-2.5 px-3 py-2.5 rounded-lg text-sm font-medium w-full text-left transition-colors ${location.pathname === item.path
+                    ? "bg-indigo-50 text-indigo-600"
+                    : "text-gray-600 hover:bg-gray-50"
+                    }`}
                 >
                   <item.icon className="w-4 h-4" />
                   <span>{item.label}</span>

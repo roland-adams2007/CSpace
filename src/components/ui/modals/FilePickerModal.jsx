@@ -3,13 +3,14 @@ import {
   X,
   Upload,
   Image as ImageIcon,
+  File,
   Loader2,
   Search,
+  Trash2,
 } from "lucide-react";
 import { useAssetStore } from "../../../store/store";
 import { fileToBase64 } from "../../../utils/fileToBase64";
 import Pagination from "../Pagination";
-import { ImageCard } from "../file-manager/ImageCard";
 
 export default function FilePickerModal({
   isOpen,
@@ -23,7 +24,14 @@ export default function FilePickerModal({
   const [uploading, setUploading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
-  const { assets, loading, pagination, fetchAssets, uploadAsset, deleteAsset } = useAssetStore();
+  const {
+    assets,
+    loading,
+    pagination,
+    fetchAssets,
+    uploadAsset,
+    deleteAsset
+  } = useAssetStore();
 
   useEffect(() => {
     if (isOpen && websiteId) {
@@ -44,6 +52,7 @@ export default function FilePickerModal({
     setUploading(true);
     try {
       const base64Data = await fileToBase64(file);
+
       const payload = {
         file: base64Data,
         filename: file.name,
@@ -52,6 +61,7 @@ export default function FilePickerModal({
         file_size: file.size,
         file_original_name: file.name,
       };
+
       const newFile = await uploadAsset(payload);
       setSelectedFile(newFile);
       setCurrentPage(1);
@@ -66,9 +76,12 @@ export default function FilePickerModal({
 
   const handleDeleteFile = async (fileId) => {
     if (!confirm("Are you sure you want to delete this file?")) return;
+
     try {
       await deleteAsset(fileId);
-      if (selectedFile?.id === fileId) setSelectedFile(null);
+      if (selectedFile?.id === fileId) {
+        setSelectedFile(null);
+      }
       await fetchAssets(websiteId, currentPage);
     } catch (error) {
       console.error("Failed to delete file:", error);
@@ -99,7 +112,9 @@ export default function FilePickerModal({
   });
 
   const getFileUrl = (file) => {
-    if (file.file_path && file.file_path.startsWith("http")) return file.file_path;
+    if (file.file_path && file.file_path.startsWith("http")) {
+      return file.file_path;
+    }
     return `${import.meta.env.VITE_APP_URL}${file.file_path}`;
   };
 
@@ -113,45 +128,45 @@ export default function FilePickerModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-[100] p-0 sm:p-4">
-      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-4xl h-[92vh] sm:max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
-        <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
+      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col">
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
           <div>
-            <h2 className="text-base sm:text-xl font-semibold text-gray-900">Select File</h2>
-            <p className="text-xs text-gray-400 mt-0.5 hidden sm:block">
+            <h2 className="text-xl font-semibold text-gray-900">Select File</h2>
+            <p className="text-sm text-gray-500 mt-1">
               Choose a file or upload a new one
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-xl transition-colors ml-2 shrink-0"
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <X className="w-5 h-5 text-gray-500" />
           </button>
         </div>
 
-        <div className="px-4 py-2.5 sm:px-6 sm:py-3 border-b border-gray-100 shrink-0">
-          <div className="flex gap-2">
-            <div className="flex-1 relative min-w-0">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex gap-3">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search files..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
-            <label className="px-3 py-1.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors cursor-pointer flex items-center gap-1.5 shrink-0 text-sm font-medium">
+            <label className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer flex items-center gap-2">
               {uploading ? (
                 <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span className="hidden sm:inline text-xs">Uploading...</span>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Uploading...</span>
                 </>
               ) : (
                 <>
-                  <Upload className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline text-xs">Upload</span>
+                  <Upload className="w-4 h-4" />
+                  <span>Upload</span>
                 </>
               )}
               <input
@@ -165,64 +180,128 @@ export default function FilePickerModal({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-3 min-h-0">
+        <div className="flex-1 overflow-y-auto p-6">
           {loading ? (
-            <div className="flex items-center justify-center h-40 sm:h-64">
-              <Loader2 className="w-7 h-7 text-indigo-600 animate-spin" />
+            <div className="flex items-center justify-center h-64">
+              <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
             </div>
           ) : filteredFiles.length > 0 ? (
-            <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3">
-              {filteredFiles.map((file) => (
-                <ImageCard
-                  key={file.id}
-                  file={file}
-                  isSelected={selectedFile?.id === file.id}
-                  onSelect={setSelectedFile}
-                  onDelete={handleDeleteFile}
-                  getFileUrl={getFileUrl}
-                  formatFileSize={formatFileSize}
-                />
-              ))}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              {filteredFiles.map((file) => {
+                const isImage =
+                  file.mime_type?.startsWith("image/") ||
+                  file.mime_type === "image";
+                const isSelected = selectedFile?.id === file.id;
+
+                return (
+                  <div
+                    key={file.id}
+                    onClick={() => setSelectedFile(file)}
+                    className={`group relative border-2 rounded-lg overflow-hidden cursor-pointer transition-all ${isSelected
+                      ? "border-indigo-500 ring-2 ring-indigo-100"
+                      : "border-gray-200 hover:border-gray-300"
+                      }`}
+                  >
+                    <div className="aspect-square bg-gray-50 flex items-center justify-center">
+                      {isImage ? (
+                        <img
+                          src={getFileUrl(file)}
+                          loading="lazy"
+                          alt={file.file_original_name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src =
+                              "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIGZpbGw9IiNGRjVFNTAiLz48cGF0aCBkPSJNMzAgMzVMMjUgMjVMMjAgMzVIMzVaMzUgNDBIMjVMMzAgMzBMMzUgNDBaIiBmaWxsPSJ3aGl0ZSIvPjwvc3ZnPg==";
+                          }}
+                        />
+                      ) : (
+                        <File className="w-12 h-12 text-gray-400" />
+                      )}
+                    </div>
+
+                    {isSelected && (
+                      <div className="absolute top-2 right-2 w-6 h-6 bg-indigo-600 rounded-full flex items-center justify-center">
+                        <svg
+                          className="w-4 h-4 text-white"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </div>
+                    )}
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteFile(file.id);
+                      }}
+                      className="absolute top-2 left-2 p-1.5 bg-red-600 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700"
+                      title="Delete file"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+
+                    <div className="p-2 border-t border-gray-200 bg-white">
+                      <p className="text-xs font-medium text-gray-900 truncate">
+                        {file.file_original_name}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {formatFileSize(file.file_size)}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center h-40 sm:h-64 text-center px-4">
-              <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center mb-3">
-                <ImageIcon className="w-6 h-6 text-gray-300" />
+            <div className="flex flex-col items-center justify-center h-64 text-center">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                <ImageIcon className="w-8 h-8 text-gray-400" />
               </div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-1">No files found</h3>
-              <p className="text-xs text-gray-400">Upload your first file to get started</p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                No files found
+              </h3>
+              <p className="text-sm text-gray-500 mb-4">
+                Upload your first file to get started
+              </p>
             </div>
           )}
         </div>
 
-        <div className="px-4 sm:px-6 py-1.5 shrink-0">
-          <Pagination
-            currentPage={currentPage}
-            totalPages={pagination.lastPage}
-            onPageChange={handlePageChange}
-            loading={loading}
-            totalItems={pagination.total}
-            itemsPerPage={pagination.perPage}
-          />
-        </div>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={pagination.lastPage}
+          onPageChange={handlePageChange}
+          loading={loading}
+          totalItems={pagination.total}
+          itemsPerPage={pagination.perPage}
+        />
 
-        <div className="px-4 sm:px-6 py-3 border-t border-gray-100 flex items-center justify-between gap-3 shrink-0">
-          <p className="text-xs text-gray-400 truncate min-w-0 flex-1">
-            {selectedFile ? `Selected: ${selectedFile.file_original_name}` : "No file selected"}
+        <div className="p-6 border-t border-gray-200 flex justify-between items-center">
+          <p className="text-sm text-gray-500">
+            {selectedFile
+              ? `Selected: ${selectedFile.file_original_name}`
+              : "No file selected"}
           </p>
-          <div className="flex gap-2 shrink-0">
+          <div className="flex gap-3">
             <button
               onClick={onClose}
-              className="px-3 py-1.5 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium"
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={handleSelect}
               disabled={!selectedFile}
-              className="px-3 py-1.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-sm font-medium"
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Select
+              Select File
             </button>
           </div>
         </div>

@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { useAssetStore } from "../store/store";
-import { useWebsiteStore } from "../store/store";
+import { useAssetStore, useWebsiteStore } from "../store/store";
 import Pagination from "../components/ui/Pagination";
 import { ImageCard } from "../components/ui/file-manager/ImageCard";
 import ImageDetailsSidebar from "../components/ui/file-manager/ImageDetailsSidebar";
@@ -265,16 +264,14 @@ const FileManager = () => {
               />
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className={`relative border-2 border-dashed rounded-xl p-12 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 ${
-                  isDraggingOverModal
+                className={`relative border-2 border-dashed rounded-xl p-12 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 ${isDraggingOverModal
                     ? "border-indigo-400 bg-indigo-50 scale-[1.02]"
                     : "border-gray-300 hover:border-indigo-300 hover:bg-indigo-50/50"
-                }`}
+                  }`}
               >
                 <Upload
-                  className={`w-10 h-10 mb-3 transition-colors ${
-                    isDraggingOverModal ? "text-indigo-500" : "text-gray-400"
-                  }`}
+                  className={`w-10 h-10 mb-3 transition-colors ${isDraggingOverModal ? "text-indigo-500" : "text-gray-400"
+                    }`}
                 />
                 <p className="text-sm font-medium text-gray-700">
                   {isDraggingOverModal ? "Release to upload" : "Drop files here"}
@@ -316,13 +313,12 @@ const FileManager = () => {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate">{toast.fileName}</p>
               <p
-                className={`text-xs ${
-                  toast.status === "error"
+                className={`text-xs ${toast.status === "error"
                     ? "text-red-500"
                     : toast.status === "success"
-                    ? "text-emerald-500"
-                    : "text-gray-400"
-                }`}
+                      ? "text-emerald-500"
+                      : "text-gray-400"
+                  }`}
               >
                 {toast.message}
               </p>
@@ -400,9 +396,8 @@ const FileManager = () => {
             {localAssets.map((file) => (
               <div
                 key={file.id}
-                className={`transition-opacity duration-300 ${
-                  file._uploading ? "opacity-60" : "opacity-100"
-                }`}
+                className={`transition-opacity duration-300 ${file._uploading ? "opacity-60" : "opacity-100"
+                  }`}
               >
                 <ImageCard
                   file={file}

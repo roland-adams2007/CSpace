@@ -8,6 +8,7 @@ import ProtectedRoute from "./ProtectedRoute";
 import Dashboard from "../pages/Dashboard";
 import Preview from "../pages/Preview";
 import FIleManager from "../pages/FileManager";
+import Forms from "../pages/Forms";
 
 const Login = lazy(() => import("../components/auth/Login"));
 const Register = lazy(() => import("../components/auth/Register"));
@@ -32,7 +33,7 @@ export default function AppRoutes() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/website-builder" element={<WebsiteBuilder />} />
             <Route path="/files" element={<FIleManager />} />
-            <Route path="/messages" element={<>Messages</>} />
+            <Route path="/forms" element={<Forms />} />
             <Route path="/automations" element={<>Automations</>} />
             <Route path="/analytics" element={<>Analytics</>} />
             <Route path="/team" element={<>Team</>} />
