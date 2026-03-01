@@ -14,6 +14,8 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const redirectParam = new URLSearchParams(location.search).get("redirect");
+  const redirect = redirectParam ? decodeURIComponent(redirectParam) : '/dashboard';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -41,7 +43,7 @@ const Login = () => {
       });
       const res = response.data;
       login(res.data.user, res.data.token);
-      navigate("/dashboard");
+      navigate(redirect, { replace: true });
     } catch (error) {
       setErrors({ submit: error.response?.data?.message || "Login failed" });
     } finally {

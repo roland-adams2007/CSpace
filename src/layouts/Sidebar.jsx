@@ -34,7 +34,6 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
 
   const settingsItems = [
     { path: "/team", icon: Users, label: "Team" },
-    { path: "/billing", icon: CreditCard, label: "Billing" },
     { path: "/settings", icon: Settings, label: "Settings" },
   ];
 

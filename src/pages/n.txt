@@ -1,625 +1,1381 @@
-Forms.jsx:
-import { useEffect, useState, useRef, useCallback } from "react";
-import { useFormStore, useWebsiteStore } from "../store/store";
+Teams.jsx:
+import { useEffect, useState } from "react";
+import { useWebsiteStore, useTeamStore } from "../store/store";
 import Pagination from "../components/ui/Pagination";
+import ConfirmModal from "../components/ui/modals/ConfirmModal";
+import { Mail, UserPlus, MoreVertical, Shield, Clock, Check, X, AlertCircle, Search, Filter } from "lucide-react";
 
-
-
-const Forms = () => {
+const Team = () => {
     const { selectedWebsite } = useWebsiteStore();
-    const { fetchForms, updateForm, deleteForm, clearForms, totalPages, totalItems } = useFormStore();
+    const {
+        members,
+        pendingInvitations,
+        loading,
+        error,
+        getTeamMembers,
+        getPendingInvitations,
+        sendTeamInvite,
+        removeMember,
+        declineInvitation,
+        memberCount,
+        invitationCount,
+        clearTeam
+    } = useTeamStore();
+
+    const [activeTab, setActiveTab] = useState("members");
+    const [showInviteModal, setShowInviteModal] = useState(false);
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [selectedMember, setSelectedMember] = useState(null);
+    const [inviteEmail, setInviteEmail] = useState("");
+    const [inviteRole, setInviteRole] = useState("editor");
+    const [searchTerm, setSearchTerm] = useState("");
+    const [membersPage, setMembersPage] = useState(1);
+    const [invitationsPage, setInvitationsPage] = useState(1);
+    const [showActionsMenu, setShowActionsMenu] = useState(null);
+    const [inviteError, setInviteError] = useState("");
+
+    const itemsPerPage = 10;
 
     useEffect(() => {
         if (selectedWebsite?.id) {
-            fetchForms(selectedWebsite.id, 1, 12);
+            loadTeamData();
         }
+        return () => {
+            clearTeam();
+        };
     }, [selectedWebsite]);
+
+    const loadTeamData = async () => {
+        if (selectedWebsite?.id) {
+            await Promise.all([
+                getTeamMembers(selectedWebsite.id),
+                getPendingInvitations(selectedWebsite.id)
+            ]);
+        }
+    };
+
+    const filteredMembers = members.filter(member =>
+        `${member.fname} ${member.lname} ${member.email}`.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const paginatedMembers = filteredMembers.slice(
+        (membersPage - 1) * itemsPerPage,
+        membersPage * itemsPerPage
+    );
+
+    const paginatedInvitations = pendingInvitations.slice(
+        (invitationsPage - 1) * itemsPerPage,
+        invitationsPage * itemsPerPage
+    );
+
+    const handleSendInvite = async () => {
+        if (!inviteEmail || !selectedWebsite?.id) return;
+
+        setInviteError("");
+        try {
+            await sendTeamInvite({
+                email: inviteEmail,
+                websiteId: selectedWebsite.id,
+                role: inviteRole,
+                expiresIn: 7 * 24 * 60 * 60 * 1000
+            });
+            setShowInviteModal(false);
+            setInviteEmail("");
+            setInviteRole("editor");
+        } catch (error) {
+            setInviteError(error.message || "Failed to send invitation");
+        }
+    };
+
+    const handleRemoveMember = async () => {
+        if (selectedMember) {
+            await removeMember(selectedMember.id);
+            setSelectedMember(null);
+        }
+    };
+
+    const handleDeclineInvitation = async (invitationId) => {
+        await declineInvitation(invitationId);
+    };
+
+    const getRoleBadgeColor = (role) => {
+        const colors = {
+            owner: "bg-purple-100 text-purple-700 border-purple-200",
+            admin: "bg-blue-100 text-blue-700 border-blue-200",
+            editor: "bg-green-100 text-green-700 border-green-200",
+            viewer: "bg-gray-100 text-gray-700 border-gray-200"
+        };
+        return colors[role] || colors.viewer;
+    };
+
+    const getInitials = (fname, lname) => {
+        return `${fname?.charAt(0) || ''}${lname?.charAt(0) || ''}`.toUpperCase();
+    };
+
+    if (!selectedWebsite) {
+        return (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <div className="text-center">
+                    <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900">No Website Selected</h3>
+                    <p className="text-sm text-gray-500 mt-1">Please select a website to manage team members</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <></>
+        <>
+            <div className="mb-6">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h2 className="text-xl font-semibold text-gray-900">Team Management</h2>
+                        <p className="text-sm text-gray-500 mt-0.5">Manage team members and invitations for {selectedWebsite.name}</p>
+                    </div>
+                    <button
+                        onClick={() => setShowInviteModal(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+                    >
+                        <UserPlus size={18} />
+                        Invite Member
+                    </button>
+                </div>
+
+                <div className="mt-4 flex items-center gap-2">
+                    <div className="relative flex-1 max-w-md">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Search members..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                        />
+                    </div>
+                    <button className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                        <Filter size={18} className="text-gray-500" />
+                    </button>
+                </div>
+
+                <div className="mt-6 border-b border-gray-200">
+                    <div className="flex gap-6">
+                        <button
+                            onClick={() => setActiveTab("members")}
+                            className={`pb-3 px-1 text-sm font-medium transition-colors relative ${activeTab === "members"
+                                ? "text-indigo-600 border-b-2 border-indigo-600"
+                                : "text-gray-500 hover:text-gray-700"
+                                }`}
+                        >
+                            Members ({memberCount})
+                        </button>
+                        <button
+                            onClick={() => setActiveTab("invitations")}
+                            className={`pb-3 px-1 text-sm font-medium transition-colors relative ${activeTab === "invitations"
+                                ? "text-indigo-600 border-b-2 border-indigo-600"
+                                : "text-gray-500 hover:text-gray-700"
+                                }`}
+                        >
+                            Pending Invitations ({invitationCount})
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {error && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700 text-sm">
+                    <AlertCircle size={16} />
+                    {error}
+                </div>
+            )}
+
+            {activeTab === "members" && (
+                <>
+                    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-gray-50 border-b border-gray-200">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Member</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
+                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200">
+                                    {loading && members.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="5" className="px-6 py-8 text-center">
+                                                <div className="flex items-center justify-center gap-2 text-gray-500">
+                                                    <div className="w-4 h-4 border-2 border-gray-300 border-t-indigo-600 rounded-full animate-spin"></div>
+                                                    Loading members...
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ) : paginatedMembers.length > 0 ? (
+                                        paginatedMembers.map((member) => (
+                                            <tr key={member.id} className="hover:bg-gray-50 transition-colors">
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-medium text-sm">
+                                                            {getInitials(member.fname, member.lname)}
+                                                        </div>
+                                                        <div>
+                                                            <div className="font-medium text-gray-900">
+                                                                {member.fname} {member.lname}
+                                                            </div>
+                                                            <div className="text-sm text-gray-500">{member?.email}</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${getRoleBadgeColor(member.role)}`}>
+                                                        <Shield size={12} className="mr-1" />
+                                                        {member.role}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${member.is_active
+                                                        ? "bg-green-100 text-green-700 border border-green-200"
+                                                        : "bg-gray-100 text-gray-700 border border-gray-200"
+                                                        }`}>
+                                                        {member.is_active ? 'Active' : 'Inactive'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-sm text-gray-500">
+                                                    {new Date(member.created_at).toLocaleDateString()}
+                                                </td>
+                                                <td className="px-6 py-4 text-right relative">
+                                                    {member.role !== 'owner' && (
+                                                        <button
+                                                            onClick={() => setShowActionsMenu(showActionsMenu === member.id ? null : member.id)}
+                                                            className="p-1 hover:bg-gray-100 rounded transition-colors"
+                                                        >
+                                                            <MoreVertical size={16} className="text-gray-500" />
+                                                        </button>
+                                                    )}
+                                                    {showActionsMenu === member.id && (
+                                                        <div className="absolute right-4 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
+                                                            <button
+                                                                onClick={() => {
+                                                                    setSelectedMember(member);
+                                                                    setShowConfirmModal(true);
+                                                                    setShowActionsMenu(null);
+                                                                }}
+                                                                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors"
+                                                            >
+                                                                Remove from team
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
+                                                No team members found
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <Pagination
+                        currentPage={membersPage}
+                        totalPages={Math.ceil(filteredMembers.length / itemsPerPage)}
+                        onPageChange={setMembersPage}
+                        loading={loading}
+                        totalItems={filteredMembers.length}
+                        itemsPerPage={itemsPerPage}
+                    />
+                </>
+            )}
+
+            {activeTab === "invitations" && (
+                <>
+                    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-gray-50 border-b border-gray-200">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expires</th>
+                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200">
+                                    {loading && pendingInvitations.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="5" className="px-6 py-8 text-center">
+                                                <div className="flex items-center justify-center gap-2 text-gray-500">
+                                                    <div className="w-4 h-4 border-2 border-gray-300 border-t-indigo-600 rounded-full animate-spin"></div>
+                                                    Loading invitations...
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ) : paginatedInvitations.length > 0 ? (
+                                        paginatedInvitations.map((invitation) => (
+                                            <tr key={invitation?.id} className="hover:bg-gray-50 transition-colors">
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                                                            <Mail size={18} className="text-gray-500" />
+                                                        </div>
+                                                        <div>
+                                                            <div className="font-medium text-gray-900">{invitation?.email}</div>
+                                                            <div className="text-xs text-gray-400">Invited by {invitation?.inviter_name}</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${getRoleBadgeColor(invitation?.role)}`}>
+                                                        <Shield size={12} className="mr-1" />
+                                                        {invitation?.role}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 border border-yellow-200">
+                                                        <Clock size={12} className="mr-1" />
+                                                        Pending
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-sm text-gray-500">
+                                                    {new Date(invitation?.expires_at).toLocaleDateString()}
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <button
+                                                            onClick={() => handleDeclineInvitation(invitation?.id)}
+                                                            className="p-1 hover:bg-red-50 rounded transition-colors group"
+                                                            title="Decline invitation"
+                                                        >
+                                                            <X size={16} className="text-gray-400 group-hover:text-red-500" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
+                                                No pending invitations
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <Pagination
+                        currentPage={invitationsPage}
+                        totalPages={Math.ceil(pendingInvitations.length / itemsPerPage)}
+                        onPageChange={setInvitationsPage}
+                        loading={loading}
+                        totalItems={pendingInvitations.length}
+                        itemsPerPage={itemsPerPage}
+                    />
+                </>
+            )}
+
+            {showInviteModal && (
+                <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white border border-gray-200 rounded-lg max-w-md w-full shadow-xl">
+                        <div className="flex items-center justify-between p-4 border-b border-gray-100">
+                            <h3 className="text-lg font-semibold text-gray-900">Invite Team Member</h3>
+                            <button
+                                onClick={() => {
+                                    setShowInviteModal(false);
+                                    setInviteEmail("");
+                                    setInviteRole("editor");
+                                    setInviteError("");
+                                }}
+                                className="p-1 hover:bg-gray-100 rounded transition-colors text-gray-500 hover:text-gray-700"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            {inviteError && (
+                                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700 text-sm">
+                                    <AlertCircle size={16} />
+                                    {inviteError}
+                                </div>
+                            )}
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Email Address
+                                    </label>
+                                    <input
+                                        type="email"
+                                        value={inviteEmail}
+                                        onChange={(e) => setInviteEmail(e.target.value)}
+                                        placeholder="colleague@company.com"
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Role
+                                    </label>
+                                    <select
+                                        value={inviteRole}
+                                        onChange={(e) => setInviteRole(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                                    >
+                                        <option value="admin">Admin - Full access</option>
+                                        <option value="editor">Editor - Can edit content</option>
+                                        <option value="viewer">Viewer - Can only view</option>
+                                    </select>
+                                </div>
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                    <p className="text-xs text-blue-700">
+                                        <span className="font-medium">Note:</span> The invitation will expire in 7 days.
+                                        The user will receive an email with instructions to join your team.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-end gap-3 p-4 border-t border-gray-100">
+                            <button
+                                onClick={() => {
+                                    setShowInviteModal(false);
+                                    setInviteEmail("");
+                                    setInviteRole("editor");
+                                    setInviteError("");
+                                }}
+                                className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors text-gray-700 text-sm"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSendInvite}
+                                disabled={!inviteEmail || loading}
+                                className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 transition-colors text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            >
+                                {loading ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                        Sending...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Mail size={16} />
+                                        Send Invitation
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <ConfirmModal
+                isOpen={showConfirmModal}
+                onClose={() => {
+                    setShowConfirmModal(false);
+                    setSelectedMember(null);
+                }}
+                onConfirm={handleRemoveMember}
+                title="Remove Team Member"
+                message={`Are you sure you want to remove ${selectedMember?.fname} ${selectedMember?.lname} from the team? This action cannot be undone.`}
+            />
+        </>
+    );
+};
+
+export default Team;
+
+
+TeamInvite.jsx:
+import { useTeamStore } from "../../store/store";
+
+const TeamInvite = () => {
+    return (
+        <>
+        </>
     )
 }
-export default Forms;
+
+export default TeamInvite;
 
 
-formStore.js:
+useTeamStore:
 import { create } from "zustand";
 import axiosInstance from "./../../api/axiosInstance";
 
-export const useFormStore = create((set, get) => ({
-  forms: [],
+export const useTeamStore = create((set, get) => ({
+  members: [],
+  pendingInvitations: [],
+  currentInvitation: null,
   loading: false,
   error: null,
-  pagination: {
-    currentPage: 1,
-    lastPage: 1,
-    total: 0,
-    perPage: 10,
-  },
 
-  fetchForms: async (websiteId, page = 1, limit = 12) => {
+  getTeamMembers: async (websiteId) => {
     set({ loading: true, error: null });
 
     try {
-      const response = await axiosInstance.get(`/forms`, {
-        params: {
-          website_id: websiteId,
-          page,
-          per_page: limit,
-        },
-      });
-
-      const { forms, meta } = response.data.data;
+      const response = await axiosInstance.get(`/team/${websiteId}`);
+      const members = response.data.data.members || [];
 
       set({
-        forms: forms || [],
-        pagination: {
-          currentPage: meta?.current_page || page,
-          lastPage: meta?.last_page || 1,
-          total: meta?.total || 0,
-          perPage: meta?.per_page || limit,
-        },
+        members,
         loading: false,
       });
 
-      return forms;
+      return members;
     } catch (error) {
       set({
-        error: error.response?.data?.message || "Failed to load forms",
+        error: error.response?.data?.message || "Failed to load team members",
         loading: false,
       });
       throw error;
     }
   },
 
-  createForm: async (payload) => {
+  getPendingInvitations: async (websiteId) => {
     set({ loading: true, error: null });
+
     try {
-      const response = await axiosInstance.post("/forms", payload);
-      const newForm = response.data.data.form;
+      const response = await axiosInstance.get(
+        `/team/${websiteId}/invitations`,
+      );
+      const invitations = response.data.data.invitations || [];
+
+      set({
+        pendingInvitations: invitations,
+        loading: false,
+      });
+
+      return invitations;
+    } catch (error) {
+      set({
+        error: error.response?.data?.message || "Failed to load invitations",
+        loading: false,
+      });
+      throw error;
+    }
+  },
+
+  sendTeamInvite: async (payload) => {
+    set({ loading: true, error: null });
+
+    try {
+      const response = await axiosInstance.post("/team/invite/send", payload);
+      const invitation = response.data.data.invitation;
+
       set((state) => ({
-        forms: [newForm, ...state.forms],
+        pendingInvitations: [invitation, ...state.pendingInvitations],
         loading: false,
       }));
-      return newForm;
+
+      return invitation;
     } catch (error) {
       set({
-        error: error.response?.data?.message || "Failed to create form",
+        error: error.response?.data?.message || "Failed to send invite",
         loading: false,
       });
       throw error;
     }
   },
 
-  updateForm: async (formId, payload) => {
+  acceptTeamInvite: async (payload) => {
     set({ loading: true, error: null });
+
     try {
-      const response = await axiosInstance.put(`/forms/${formId}`, payload);
-      const updatedForm = response.data.data.form;
+      const response = await axiosInstance.post("/team/invite/accept", payload);
+      const member = response.data.data.member;
+
       set((state) => ({
-        forms: state.forms.map((form) =>
-          form.id === formId ? updatedForm : form,
+        members: [member, ...state.members],
+        pendingInvitations: state.pendingInvitations.filter(
+          (inv) => inv.id !== payload.invitationId,
         ),
         loading: false,
       }));
-      return updatedForm;
+
+      return member;
     } catch (error) {
       set({
-        error: error.response?.data?.message || "Failed to update form",
+        error: error.response?.data?.message || "Failed to accept invite",
         loading: false,
       });
       throw error;
     }
   },
 
-  deleteForm: async (formId) => {
+  declineInvitation: async (invitationId) => {
     set({ loading: true, error: null });
+
     try {
-      await axiosInstance.delete(`/forms/${formId}`);
+      await axiosInstance.post("/team/invite/decline", { invitationId });
+
       set((state) => ({
-        forms: state.forms.filter((form) => form.id !== formId),
+        pendingInvitations: state.pendingInvitations.filter(
+          (inv) => inv.id !== invitationId,
+        ),
         loading: false,
       }));
     } catch (error) {
       set({
-        error: error.response?.data?.message || "Failed to delete form",
+        error: error.response?.data?.message || "Failed to decline invite",
         loading: false,
       });
       throw error;
     }
   },
 
-  clearForms: () => {
+  removeMember: async (memberId) => {
+    set({ loading: true, error: null });
+
+    try {
+      await axiosInstance.delete(`/team/${memberId}`);
+
+      set((state) => ({
+        members: state.members.filter((member) => member.id !== memberId),
+        loading: false,
+      }));
+    } catch (error) {
+      set({
+        error: error.response?.data?.message || "Failed to remove member",
+        loading: false,
+      });
+      throw error;
+    }
+  },
+
+  fetchInvitationDetails: async (token) => {
+    set({ loading: true, error: null });
+
+    try {
+      const response = await axiosInstance.get(`/team/invite/${token}`);
+      const invitation = response.data.data.invitation;
+
+      set({
+        currentInvitation: invitation,
+        loading: false,
+      });
+
+      return invitation;
+    } catch (error) {
+      set({
+        error:
+          error.response?.data?.message || "Failed to fetch invitation details",
+        loading: false,
+      });
+      throw error;
+    }
+  },
+
+  clearCurrentInvitation: () => {
     set({
-      forms: [],
-      error: null,
-      pagination: {
-        currentPage: 1,
-        lastPage: 1,
-        total: 0,
-        perPage: 10,
-      },
+      currentInvitation: null,
     });
   },
 
-  get totalPages() {
-    return get().pagination.lastPage;
+  clearTeam: () => {
+    set({
+      members: [],
+      pendingInvitations: [],
+      error: null,
+    });
   },
 
-  get totalItems() {
-    return get().pagination.total;
+  get memberCount() {
+    return get().members.length;
+  },
+
+  get invitationCount() {
+    return get().pendingInvitations.length;
   },
 }));
 
 
-pagination.jsx:
-import { ChevronLeft, ChevronRight } from "lucide-react";
+db:
+CREATE TABLE IF NOT EXISTS users (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  uuid CHAR(36) NOT NULL UNIQUE,
+  fname VARCHAR(100) NULL,
+  lname VARCHAR(100) NULL,
+  email VARCHAR(190) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NULL,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  email_verified_at DATETIME NULL,
+  last_login_at DATETIME NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_users_email (email),
+  INDEX idx_users_is_active (is_active),
+  INDEX idx_users_verified (email_verified_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-const Pagination = ({
-  currentPage,
-  totalPages,
-  onPageChange,
-  loading = false,
-  totalItems = 0,
-  itemsPerPage = 20
-}) => {
-  if (totalPages <= 1) return null;
 
-  const pageNumbers = [];
-  const maxVisiblePages = 5;
+CREATE TABLE IF NOT EXISTS user_sessions (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT UNSIGNED NOT NULL,
+  session_id CHAR(36) NOT NULL UNIQUE,
+  ip_address VARCHAR(45) NULL,
+  user_agent VARCHAR(512) NULL,
+  device_label VARCHAR(120) NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_seen_at DATETIME NULL,
+  revoked_at DATETIME NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_sessions_user (user_id),
+  INDEX idx_sessions_revoked (revoked_at),
+  INDEX idx_sessions_last_seen (last_seen_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-  let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-  let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
 
-  if (endPage - startPage + 1 < maxVisiblePages) {
-    startPage = Math.max(1, endPage - maxVisiblePages + 1);
-  }
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT UNSIGNED NOT NULL,
+  session_id CHAR(36) NOT NULL,
+  token_hash CHAR(64) NOT NULL UNIQUE,
+  expires_at DATETIME NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  revoked_at DATETIME NULL,
+  replaced_by_token_hash CHAR(64) NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (session_id) REFERENCES user_sessions(session_id) ON DELETE CASCADE,
+  INDEX idx_refresh_user (user_id),
+  INDEX idx_refresh_session (session_id),
+  INDEX idx_refresh_expires (expires_at),
+  INDEX idx_refresh_revoked (revoked_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-  for (let i = startPage; i <= endPage; i++) {
-    pageNumbers.push(i);
-  }
 
-  const startItem = (currentPage - 1) * itemsPerPage + 1;
-  const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+CREATE TABLE IF NOT EXISTS email_tokens (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  email VARCHAR(190) NOT NULL,
+  user_id BIGINT UNSIGNED DEFAULT NULL,
+  type VARCHAR(100) NOT NULL,
+  token_hash CHAR(64) NOT NULL UNIQUE,
+  is_used TINYINT(1) NOT NULL DEFAULT 0,
+  expires_at DATETIME NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  used_at DATETIME NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_email_tokens_user (user_id),
+  INDEX idx_email_tokens_type (type),
+  INDEX idx_email_tokens_used (is_used),
+  INDEX idx_email_tokens_expires (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-  const basePageBtn = `
-    relative px-3.5 py-1.5 rounded-lg text-sm font-medium min-w-[38px]
-    transition-all duration-150 select-none
-  `;
+CREATE TABLE IF NOT EXISTS login_attempts (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  email VARCHAR(190) NULL,
+  ip_address VARCHAR(45) NULL,
+  success TINYINT(1) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_attempts_email (email),
+  INDEX idx_attempts_ip (ip_address),
+  INDEX idx_attempts_time (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-  const activePageBtn = `${basePageBtn}
-    bg-indigo-600 text-white shadow-md shadow-indigo-200
-    ring-2 ring-indigo-300 ring-offset-1
-  `;
+CREATE TABLE IF NOT EXISTS theme_templates (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(150) NOT NULL,
+  slug VARCHAR(150) NOT NULL UNIQUE,
+  description TEXT NULL,
+  preview_image VARCHAR(255) NULL,
+  base_config_json JSON NOT NULL,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_theme_templates_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-  const inactivePageBtn = `${basePageBtn}
-    bg-white text-slate-600 border border-slate-200
-    hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50
-    hover:shadow-sm
-  `;
+CREATE TABLE IF NOT EXISTS websites (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(150) NOT NULL,
+  slug VARCHAR(120) NOT NULL UNIQUE,
+  description TEXT NULL,
+  website_theme_id BIGINT UNSIGNED NULL,
+  is_published TINYINT(1) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_websites_slug (slug)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-  const navBtn = (disabled) => `
-    p-2 rounded-lg border transition-all duration-150 select-none
-    ${disabled
-      ? "border-slate-200 text-slate-300 cursor-not-allowed bg-slate-50"
-      : "border-slate-200 bg-white text-slate-500 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50 hover:shadow-sm"
+CREATE TABLE IF NOT EXISTS website_themes (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  website_id BIGINT UNSIGNED NOT NULL,
+  template_id BIGINT UNSIGNED NULL,
+  name VARCHAR(150) NOT NULL,
+  slug VARCHAR(150) NOT NULL,
+  config_json JSON NOT NULL,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  FOREIGN KEY (website_id) REFERENCES websites(id) ON DELETE CASCADE,
+  FOREIGN KEY (template_id) REFERENCES theme_templates(id) ON DELETE SET NULL,
+
+  UNIQUE KEY uq_website_theme_slug (website_id, slug),
+  INDEX idx_website_themes_website (website_id),
+  INDEX idx_website_themes_template (template_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS website_users (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  website_id BIGINT UNSIGNED NOT NULL,
+  user_id BIGINT UNSIGNED NOT NULL,
+  role ENUM('owner','admin','editor','viewer') NOT NULL DEFAULT 'editor',
+  invited_by BIGINT UNSIGNED NULL,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (website_id) REFERENCES websites(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (invited_by) REFERENCES users(id) ON DELETE SET NULL,
+  UNIQUE KEY uq_website_user (website_id, user_id),
+  INDEX idx_website_users_user (user_id),
+  INDEX idx_website_users_website (website_id),
+  INDEX idx_website_users_role (role)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS pages (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  website_id BIGINT UNSIGNED NOT NULL,
+  name VARCHAR(150) NOT NULL,
+  slug VARCHAR(150) NOT NULL,
+  content_json JSON NOT NULL,
+  is_home TINYINT(1) NOT NULL DEFAULT 0,
+  is_published TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (website_id) REFERENCES websites(id) ON DELETE CASCADE,
+  UNIQUE KEY uq_page_slug (website_id, slug),
+  INDEX idx_pages_website (website_id),
+  INDEX idx_pages_home (website_id, is_home)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS website_assets (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  website_id BIGINT UNSIGNED NOT NULL,
+  file_uuid CHAR(36) NOT NULL,
+  file_original_name VARCHAR(255) NULL,
+  file_path VARCHAR(500) NULL,
+  file_name VARCHAR(255) NULL,
+  file_size INT UNSIGNED NULL,
+  mime_type VARCHAR(100) NULL,
+  extension VARCHAR(20) NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (website_id) REFERENCES websites(id) ON DELETE CASCADE,
+  INDEX idx_assets_website (website_id),
+  INDEX idx_assets_file_uuid (file_uuid)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS forms (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  website_id BIGINT UNSIGNED NOT NULL,
+  form_data JSON NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_website_id (website_id),
+    FOREIGN KEY (website_id)
+    REFERENCES websites(id)
+    ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS team_invitations (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  website_id BIGINT UNSIGNED NOT NULL,
+  email VARCHAR(190) NOT NULL,
+  invited_by BIGINT UNSIGNED NOT NULL,
+  role ENUM('owner','admin','editor','viewer') NOT NULL DEFAULT 'editor',
+  token_hash CHAR(64) NOT NULL UNIQUE,
+  status ENUM('pending','accepted','declined','expired') NOT NULL DEFAULT 'pending',
+  expires_at DATETIME NOT NULL,
+  accepted_at DATETIME NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  
+  FOREIGN KEY (website_id) REFERENCES websites(id) ON DELETE CASCADE,
+  FOREIGN KEY (invited_by) REFERENCES users(id) ON DELETE CASCADE,
+  
+  UNIQUE KEY uq_pending_invitation (website_id, email, status),
+  INDEX idx_team_inv_website (website_id),
+  INDEX idx_team_inv_email (email),
+  INDEX idx_team_inv_token (token_hash),
+  INDEX idx_team_inv_status (status),
+  INDEX idx_team_inv_expires (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+team.modal.js:
+const { db_connection } = require("../config/config.inc");
+
+const Team = {
+  // Get all team members for a website
+  findByWebsite: async (websiteId, limit, offset) => {
+    try {
+      const [rows] = await db_connection.execute(
+        `SELECT wu.*, u.fname, u.lname, u.email 
+         FROM website_users wu
+         JOIN users u ON wu.user_id = u.id
+         WHERE wu.website_id = ?
+         ORDER BY wu.created_at DESC
+         LIMIT ? OFFSET ?`,
+        [websiteId, limit, offset],
+      );
+
+      const [countResult] = await db_connection.execute(
+        `SELECT COUNT(*) as total FROM website_users WHERE website_id = ?`,
+        [websiteId],
+      );
+
+      const total = countResult[0]?.total || 0;
+      return { members: rows || [], total };
+    } catch (error) {
+      console.error("Error fetching team members by website:", error);
+      return { members: [], total: 0 };
     }
-  `;
+  },
 
-  return (
-    <div
-      className="flex flex-col sm:flex-row items-center justify-between mt-8 pt-6"
-      style={{
-        borderTop: "1px solid #e8eaf0",
-      }}
-    >
-      {/* Info text */}
-      <p
-        className="text-sm mb-4 sm:mb-0 font-medium"
-        style={{ color: "#94a3b8" }}
-      >
-        Showing{" "}
-        <span style={{ color: "#475569" }}>
-          {startItem}–{endItem}
-        </span>{" "}
-        of{" "}
-        <span style={{ color: "#475569" }}>{totalItems}</span>{" "}
-        files
-      </p>
+  // Find team member by ID
+  findById: async (id) => {
+    try {
+      const [rows] = await db_connection.execute(
+        `SELECT * FROM team_invitations WHERE id = ?`,
+        [id],
+      );
+      return rows[0] || null;
+    } catch (error) {
+      console.error("Error fetching team member by id:", error);
+      return null;
+    }
+  },
 
-      {/* Controls */}
-      <div className="flex items-center gap-1.5">
-        {/* Prev */}
-        <button
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 1 || loading}
-          className={navBtn(currentPage === 1 || loading)}
-          aria-label="Previous page"
-        >
-          <ChevronLeft size={16} />
-        </button>
+  // Create team invitation
+  createInvitation: async (data) => {
+    try {
+      const { website_id, email, invited_by, role, token_hash, expires_at } =
+        data;
 
-        {/* First page + ellipsis */}
-        {startPage > 1 && (
-          <>
-            <button
-              onClick={() => onPageChange(1)}
-              disabled={loading}
-              className={1 === currentPage ? activePageBtn : inactivePageBtn}
-            >
-              1
-            </button>
-            {startPage > 2 && (
-              <span
-                className="px-1 text-sm font-medium select-none"
-                style={{ color: "#cbd5e1" }}
-              >
-                ···
-              </span>
-            )}
-          </>
-        )}
+      const [result] = await db_connection.execute(
+        `INSERT INTO team_invitations (
+          website_id,
+          email,
+          invited_by,
+          role,
+          token_hash,
+          status,
+          expires_at,
+          created_at,
+          updated_at
+        ) VALUES (?, ?, ?, ?, ?, 'pending', ?, NOW(), NOW())`,
+        [website_id, email, invited_by, role, token_hash, expires_at],
+      );
+      return result.insertId;
+    } catch (error) {
+      console.error("Error creating team invitation:", error);
+      return null;
+    }
+  },
 
-        {/* Page numbers */}
-        {pageNumbers.map((page) => (
-          <button
-            key={page}
-            onClick={() => onPageChange(page)}
-            disabled={loading}
-            className={
-              page === currentPage
-                ? activePageBtn + (loading ? " opacity-50" : "")
-                : inactivePageBtn + (loading ? " opacity-50" : "")
-            }
-          >
-            {page}
-          </button>
-        ))}
+  // Find invitation by token hash
+  findInvitationByToken: async (tokenHash) => {
+    try {
+      const [rows] = await db_connection.execute(
+        `SELECT * FROM team_invitations 
+         WHERE token_hash = ? AND status = 'pending' AND expires_at > NOW()`,
+        [tokenHash],
+      );
+      return rows[0] || null;
+    } catch (error) {
+      console.error("Error fetching invitation by token:", error);
+      return null;
+    }
+  },
 
-        {/* Ellipsis + last page */}
-        {endPage < totalPages && (
-          <>
-            {endPage < totalPages - 1 && (
-              <span
-                className="px-1 text-sm font-medium select-none"
-                style={{ color: "#cbd5e1" }}
-              >
-                ···
-              </span>
-            )}
-            <button
-              onClick={() => onPageChange(totalPages)}
-              disabled={loading}
-              className={
-                totalPages === currentPage ? activePageBtn : inactivePageBtn
-              }
-            >
-              {totalPages}
-            </button>
-          </>
-        )}
+  // Accept team invitation
+  acceptInvitation: async (
+    invitationId,
+    userId,
+    invitedBy,
+    websiteId,
+    role,
+  ) => {
+    try {
+      // Add user to website_users
+      const [result] = await db_connection.execute(
+        `INSERT INTO website_users (website_id, user_id, role, invited_by, is_active, created_at)
+         VALUES (?, ?, ?, ?, 1, NOW())`,
+        [websiteId, userId, role, invitedBy],
+      );
 
-        {/* Next */}
-        <button
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages || loading}
-          className={navBtn(currentPage === totalPages || loading)}
-          aria-label="Next page"
-        >
-          <ChevronRight size={16} />
-        </button>
-      </div>
-    </div>
-  );
+      if (result.affectedRows === 0) {
+        return false;
+      }
+
+      // Update invitation status
+      await db_connection.execute(
+        `UPDATE team_invitations 
+         SET status = 'accepted', accepted_at = NOW(), updated_at = NOW()
+         WHERE id = ?`,
+        [invitationId],
+      );
+
+      return true;
+    } catch (error) {
+      console.error("Error accepting invitation:", error);
+      return false;
+    }
+  },
+
+  // Get pending invitations for a website
+  getPendingInvitations: async (websiteId, limit, offset) => {
+    try {
+      const [rows] = await db_connection.execute(
+        `SELECT ti.*, CONCAT(u.fname, ' ', u.lname) as inviter_name
+         FROM team_invitations ti
+         LEFT JOIN users u ON ti.invited_by = u.id
+         WHERE ti.website_id = ? AND ti.status = 'pending' AND ti.expires_at > NOW()
+         ORDER BY ti.created_at DESC
+         LIMIT ? OFFSET ?`,
+        [websiteId, limit, offset],
+      );
+
+      const [countResult] = await db_connection.execute(
+        `SELECT COUNT(*) as total FROM team_invitations 
+         WHERE website_id = ? AND status = 'pending' AND expires_at > NOW()`,
+        [websiteId],
+      );
+
+      const total = countResult[0]?.total || 0;
+      return { invitations: rows || [], total };
+    } catch (error) {
+      console.error("Error fetching pending invitations:", error);
+      return { invitations: [], total: 0 };
+    }
+  },
+
+  // Decline invitation
+  declineInvitation: async (invitationId) => {
+    try {
+      const [result] = await db_connection.execute(
+        `DELETE FROM team_invitations WHERE id = ?`,
+        [invitationId],
+      );
+      return result.affectedRows > 0;
+    } catch (error) {
+      console.error("Error declining invitation:", error);
+      return false;
+    }
+  },
+
+  // Remove team member
+  removeMember: async (memberId) => {
+    try {
+      const [result] = await db_connection.execute(
+        `DELETE FROM website_users WHERE id = ?`,
+        [memberId],
+      );
+      return result.affectedRows > 0;
+    } catch (error) {
+      console.error("Error removing team member:", error);
+      return false;
+    }
+  },
+
+  // Update member role
+  updateMemberRole: async (memberId, role) => {
+    try {
+      const [result] = await db_connection.execute(
+        `UPDATE website_users SET role = ?, updated_at = NOW() WHERE id = ?`,
+        [role, memberId],
+      );
+      return result.affectedRows > 0;
+    } catch (error) {
+      console.error("Error updating member role:", error);
+      return false;
+    }
+  },
 };
 
-export default Pagination;
+module.exports = Team;
 
 
-form.controller.js:
+team.controller.js:
 const asyncHandler = require("express-async-handler");
+const crypto = require("crypto");
 const { responseHandler } = require("../middleware/responseHandler.js");
+const User = require("../models/user.model.js");
 const Website = require("../models/website.model.js");
-const { v4: uuidv4 } = require("uuid");
-const axios = require("axios");
-const { file_config } = require("../config/config.inc.js");
-const Form = require("../models/form.model.js");
+const Team = require("../models/team.modal.js");
+const { checkEmailRateLimit } = require("../utils/emailRateLimit.js");
+const emailQueue = require("../services/queues/email.queue.js");
+const generateToken = require("../utils/generateToken.js");
+const { system } = require("../config/config.inc");
 
-const sendForm = asyncHandler(async function (req, res) {
-  const nowUtc = new Date().toISOString().slice(0, 19).replace("T", " ");
-  const { website_id, section_type, section_id, data } = req.body;
-  const userId = req.user?.id;
+const sha256 = (value) =>
+  crypto.createHash("sha256").update(value).digest("hex");
 
-  if (!userId) {
-    res.status(401);
-    throw new Error("User not authenticated");
-  }
+const sendTeamInvite = asyncHandler(async function (req, res) {
+  const { email, websiteId, role, expiresIn } = req.body;
+  const userId = req.user.id;
+  const ipAddress = req.ip;
 
-  if (!website_id) {
+  if (!email || !websiteId) {
     res.status(400);
-    throw new Error("Website ID is required");
+    throw new Error("Email and website ID are required");
   }
 
-  const hasAccess = await Website.checkUserAccess(website_id, userId);
-  if (!hasAccess) {
-    res.status(403);
-    throw new Error("Access denied to this website");
+  // Prevent self-invitation
+  const currentUser = req.user;
+  if (currentUser.email.toLowerCase() === email.toLowerCase()) {
+    res.status(400);
+    throw new Error("You cannot invite yourself to a team");
   }
 
-  const form_data = {
-    section_type: section_type,
-    section_id: section_id,
-    data: data,
-  };
+  if (!["owner", "admin", "editor", "viewer"].includes(role)) {
+    res.status(400);
+    throw new Error("Invalid role specified");
+  }
 
-  const newFormId = Form.create({
-    website_id: website_id,
-    created_at: nowUtc,
-    form_data: JSON.stringify(form_data),
+  const website = await Website.findById(websiteId, userId);
+  if (!website) {
+    res.status(404);
+    throw new Error("Website not found");
+  }
+
+  // Check if user is already a team member
+  const [existingMember] =
+    await require("../config/config.inc").db_connection.execute(
+      `SELECT id FROM website_users WHERE website_id = ? AND user_id = (SELECT id FROM users WHERE LOWER(email) = LOWER(?))`,
+      [websiteId, email],
+    );
+
+  if (existingMember && existingMember.length > 0) {
+    res.status(400);
+    throw new Error("This user is already a member of this team");
+  }
+
+  // Check for pending invitation
+  const [pendingInvite] =
+    await require("../config/config.inc").db_connection.execute(
+      `SELECT id FROM team_invitations WHERE website_id = ? AND email = ? AND status = 'pending' AND expires_at > NOW()`,
+      [websiteId, email],
+    );
+
+  if (pendingInvite && pendingInvite.length > 0) {
+    res.status(400);
+    throw new Error("An invitation has already been sent to this email");
+  }
+
+  const rl = await checkEmailRateLimit(
+    `${email}:ADD_TO_TEAM`,
+    ipAddress,
+    5,
+    60,
+  );
+
+  if (!rl.allowed) {
+    res.status(429);
+    throw new Error("Too many invitation attempts. Please try again later.");
+  }
+
+  const rawToken = generateToken();
+  const tokenHash = sha256(rawToken);
+
+  const expiresAtUtc = new Date(
+    Date.now() + (expiresIn || 24 * 60 * 60 * 1000),
+  );
+  const invitationId = await Team.createInvitation({
+    website_id: websiteId,
+    email,
+    invited_by: userId,
+    role,
+    token_hash: tokenHash,
+    expires_at: expiresAtUtc,
   });
 
-  if (!newFormId) {
-    res.status(400);
-    throw new Error("Unable to send form data");
+  if (!invitationId) {
+    res.status(500);
+    throw new Error("Failed to create team invitation. Please try again.");
   }
-  res.status(201);
-  responseHandler(res, {}, "Data Sent Successfully");
+  const invitationLink = `${system.APP_URL}/team/invite?token=${rawToken}`;
+  await emailQueue.add("sendEmail", {
+    type: "ADD_TO_TEAM",
+    payload: {
+      to: email,
+      websiteName: website.name,
+      role,
+      invitationLink,
+      expiresIn: expiresIn || 24 * 60 * 60 * 1000,
+      token: rawToken,
+      inviterName: `${currentUser.fname} ${currentUser.lname}`.trim(),
+    },
+  });
+
+  responseHandler(res, { invitationId }, "Team invite sent successfully!");
 });
 
-const fetchForms = asyncHandler(async function (req, res) {
-  const websiteId = req.query.website_id;
-  const userId = req.user?.id;
+const acceptTeamInvite = asyncHandler(async function (req, res) {
+  const { token } = req.body;
+  const userId = req.user.id;
 
-  if (!userId) {
-    res.status(401);
-    throw new Error("User not authenticated");
+  if (!token) {
+    res.status(400);
+    throw new Error("Invitation token is required");
   }
+
+  const tokenHash = sha256(token);
+
+  // Find invitation using Team model
+  const invitation = await Team.findInvitationByToken(tokenHash);
+
+  if (!invitation) {
+    res.status(404);
+    throw new Error("Invalid or expired invitation");
+  }
+
+  // Accept invitation using Team model
+  const success = await Team.acceptInvitation(
+    invitation.id,
+    userId,
+    invitation.invited_by,
+    invitation.website_id,
+    invitation.role,
+  );
+
+  if (!success) {
+    res.status(500);
+    throw new Error("Failed to accept invitation. Please try again.");
+  }
+
+  responseHandler(res, {}, "Successfully joined the team!");
+});
+
+const getTeamMembers = asyncHandler(async function (req, res) {
+  const { websiteId } = req.params;
+  const { limit = 10, offset = 0 } = req.query;
 
   if (!websiteId) {
     res.status(400);
     throw new Error("Website ID is required");
   }
 
-  const hasAccess = await Website.checkUserAccess(websiteId, userId);
-  if (!hasAccess) {
-    res.status(403);
-    throw new Error("Access denied to this website");
+  const result = await Team.findByWebsite(
+    websiteId,
+    parseInt(limit),
+    parseInt(offset),
+  );
+
+  responseHandler(res, result, "Team members fetched successfully!");
+});
+
+const getPendingInvitations = asyncHandler(async function (req, res) {
+  const { websiteId } = req.params;
+  const { limit = 10, offset = 0 } = req.query;
+
+  if (!websiteId) {
+    res.status(400);
+    throw new Error("Website ID is required");
   }
 
-  const limit = parseInt(req.query.per_page) || 10;
-  const page = parseInt(req.query.page) || 1;
-  const offset = (page - 1) * limit;
+  const result = await Team.getPendingInvitations(
+    websiteId,
+    parseInt(limit),
+    parseInt(offset),
+  );
 
-  const { forms, total } = await Form.findByWebsite(websiteId, limit, offset);
+  responseHandler(res, result, "Pending invitations fetched successfully!");
+});
 
-  const meta = {
-    total: total,
-    per_page: limit,
-    current_page: page,
-    last_page: Math.ceil(total / limit),
-  };
+const removeMember = asyncHandler(async function (req, res) {
+  const { memberId } = req.params;
 
-  responseHandler(res, { forms, meta }, "Forms fetched successfully");
+  if (!memberId) {
+    res.status(400);
+    throw new Error("Member ID is required");
+  }
+
+  const success = await Team.removeMember(memberId);
+
+  if (!success) {
+    res.status(500);
+    throw new Error("Failed to remove team member.");
+  }
+
+  responseHandler(res, {}, "Team member removed successfully!");
+});
+
+const declineInvitation = asyncHandler(async function (req, res) {
+  const { token, invitationId } = req.body;
+
+  if (!token && !invitationId) {
+    res.status(400);
+    throw new Error("Either invitation token or invitation ID is required");
+  }
+
+  let invitation;
+
+  if (token) {
+    const tokenHash = sha256(token);
+    invitation = await Team.findInvitationByToken(tokenHash);
+  } else if (invitationId) {
+    invitation = await Team.findById(invitationId);
+  }
+
+  if (!invitation) {
+    res.status(404);
+    throw new Error("Invalid or expired invitation");
+  }
+
+  const success = await Team.declineInvitation(invitation.id);
+
+  if (!success) {
+    res.status(500);
+    throw new Error("Failed to decline invitation.");
+  }
+
+  responseHandler(res, {}, "Invitation declined successfully!");
+});
+
+const fetchInvitationDetails = asyncHandler(async function (req, res) {
+  const { token } = req.query;
+
+  if (!token) {
+    res.status(400);
+    throw new Error("Invitation token is required");
+  }
+
+  const tokenHash = sha256(token);
+  const invitation = await Team.findInvitationByToken(tokenHash);
+
+  if (!invitation) {
+    res.status(404);
+    throw new Error("Invalid or expired invitation");
+  }
+
+  responseHandler(
+    res,
+    { invitation },
+    "Invitation details fetched successfully!",
+  );
 });
 
 module.exports = {
-  sendForm,
-  fetchForms,
+  sendTeamInvite,
+  acceptTeamInvite,
+  getTeamMembers,
+  getPendingInvitations,
+  removeMember,
+  declineInvitation,
+  fetchInvitationDetails,
 };
 
 
-Dashboard.jsx:
-import { useEffect, useState } from "react";
-import StatsCard from "../components/ui/dashboard/StatsCard";
-import { useWebsiteStore } from "../store/store";
-
-export default function Dashboard() {
-  const { selectedWebsite } = useWebsiteStore();
-  const [activeSlide, setActiveSlide] = useState(0);
-
-  const stats = [
-    {
-      icon: "eye",
-      title: "Total Visitors",
-      value: "4,862",
-      change: 12,
-      color: "blue",
-    },
-    {
-      icon: "folder",
-      title: "Files Stored",
-      value: "324",
-      change: 8,
-      color: "purple",
-    },
-    {
-      icon: "mail",
-      title: "New Messages",
-      value: "89",
-      change: 24,
-      color: "emerald",
-    },
-    {
-      icon: "zap",
-      title: "Automations",
-      value: "12",
-      change: 0,
-      color: "orange",
-    },
-  ];
-
-  const activities = [
-    {
-      icon: "upload",
-      title: "New file uploaded",
-      description: "portfolio-hero.jpg added to Portfolio Studio",
-      time: "2 hours ago",
-      color: "blue",
-    },
-    {
-      icon: "check-circle",
-      title: "Design updated",
-      description: "Homepage layout modified on Portfolio Studio",
-      time: "1 day ago",
-      color: "green",
-    },
-    {
-      icon: "mail",
-      title: "New message received",
-      description: "Contact form submission from Sarah Johnson",
-      time: "2 days ago",
-      color: "purple",
-    },
-    {
-      icon: "zap",
-      title: "SEO optimized",
-      description: "Meta tags updated for Portfolio Studio",
-      time: "3 days ago",
-      color: "orange",
-    },
-  ];
-
-  useEffect(() => {
-    const container = document.getElementById("statsContainer");
-    const updateScrollIndicator = () => {
-      if (window.innerWidth >= 640) return;
-      const scrollLeft = container.scrollLeft;
-      const containerWidth = container.clientWidth;
-      setActiveSlide(Math.round(scrollLeft / containerWidth));
-    };
-    if (container) {
-      container.addEventListener("scroll", updateScrollIndicator);
-    }
-    return () => {
-      if (container) {
-        container.removeEventListener("scroll", updateScrollIndicator);
-      }
-    };
-  }, []);
-
-  const scrollToSlide = (index) => {
-    const container = document.getElementById("statsContainer");
-    if (container) {
-      const containerWidth = container.clientWidth;
-      container.scrollTo({ left: index * containerWidth, behavior: "smooth" });
-    }
-  };
-
-  return (
-    <>
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">Dashboard</h2>
-        <p className="text-sm text-gray-500 mt-0.5">Welcome back, John 👋</p>
-        <div className="mt-3 flex items-center text-sm text-gray-600 bg-white rounded-lg p-3 border border-gray-200 max-w-fit">
-          <i data-lucide="globe" className="w-4 h-4 text-indigo-600 mr-2"></i>
-          <span>Currently viewing:</span>
-          <span className="font-medium text-indigo-700 ml-1">
-            {selectedWebsite?.name || "No website selected"}
-          </span>
-        </div>
-      </div>
-
-      <div className="mb-8">
-        <div className="stats-container" id="statsContainer">
-          {stats.map((stat, index) => (
-            <div key={index} className="stat-card-slide">
-              <StatsCard
-                icon={stat.icon}
-                title={stat.title}
-                value={stat.value}
-                change={stat.change}
-                color={stat.color}
-                websiteName={selectedWebsite?.name || "Portfolio Studio"}
-              />
-            </div>
-          ))}
-        </div>
-
-        <div className="scroll-indicator flex justify-center sm:hidden">
-          {stats.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => scrollToSlide(index)}
-              className={`scroll-dot mx-1 ${activeSlide === index ? "active" : ""}`}
-            />
-          ))}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-base font-semibold text-gray-900">
-                    Recent Activity
-                  </h3>
-                  <p className="text-sm text-gray-500 mt-0.5">
-                    Latest updates on{" "}
-                    <span className="font-medium">
-                      {selectedWebsite?.name || "Portfolio Studio"}
-                    </span>
-                  </p>
-                </div>
-                <span className="px-2 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded">
-                  Active Website
-                </span>
-              </div>
-            </div>
-            <div className="p-5 space-y-4">
-              {activities.map((activity, index) => (
-                <div key={index} className="flex items-start space-x-3">
-                  <div
-                    className={`w-8 h-8 bg-${activity.color}-100 rounded-lg flex items-center justify-center flex-shrink-0`}
-                  >
-                    <i
-                      data-lucide={activity.icon}
-                      className={`w-4 h-4 text-${activity.color}-600`}
-                    ></i>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900">
-                      {activity.title}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {activity.description}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {activity.time}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="px-5 py-3 bg-gray-50 border-t border-gray-100">
-              <button className="text-sm font-medium text-indigo-600 hover:text-indigo-700">
-                View all activity →
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <div className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg p-6 text-white shadow-lg">
-            <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center mb-4">
-              <i data-lucide="crown" className="w-6 h-6 text-white"></i>
-            </div>
-            <h4 className="text-lg font-semibold mb-2">Upgrade to Pro</h4>
-            <p className="text-sm text-indigo-100 mb-4">
-              Unlock unlimited websites, storage & advanced features
-            </p>
-            <button className="w-full px-4 py-2.5 bg-white text-indigo-600 font-medium rounded-lg hover:bg-indigo-50 transition-colors text-sm">
-              Upgrade Now
-            </button>
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
-
-
 prompt:
-help me compelete the form.jsx using the dashboard.jsx
+help me TeamInvite.jsx
+do it like this, it will fetch the invite details and show it, accept and decline, in the teamInvaute call useAuth - user to knwo if the user is login into because he/she can accept invitation u get... if they are not logged the button should be login u get take them to login
 
-give me the full code without comments
+
+give me full code without comments

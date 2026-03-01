@@ -9,6 +9,8 @@ import Dashboard from "../pages/Dashboard";
 import Preview from "../pages/Preview";
 import FIleManager from "../pages/FileManager";
 import Forms from "../pages/Forms";
+import Team from "../pages/Teams";
+import TeamInvite from "../components/teams/TeamInvite";
 
 const Login = lazy(() => import("../components/auth/Login"));
 const Register = lazy(() => import("../components/auth/Register"));
@@ -21,6 +23,7 @@ export default function AppRoutes() {
     <Suspense fallback={<AppLoader />}>
       <Routes>
         <Route path="/" element={<>Home Page</>} />
+        <Route path="/team/invite" element={<TeamInvite />} />
 
         <Route element={<PublicRoute />}>
           <Route path="/login" element={<Login />} />
@@ -36,7 +39,7 @@ export default function AppRoutes() {
             <Route path="/forms" element={<Forms />} />
             <Route path="/automations" element={<>Automations</>} />
             <Route path="/analytics" element={<>Analytics</>} />
-            <Route path="/team" element={<>Team</>} />
+            <Route path="/team" element={<Team />} />
             <Route path="/billing" element={<>Billing</>} />
             <Route path="/settings" element={<>Settings</>} />
           </Route>
