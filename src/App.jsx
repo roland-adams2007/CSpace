@@ -6,6 +6,7 @@ import ScrollToTop from "./utils/ScrollToTop";
 import TopLoader from "./components/ui/loaders/TopLoader";
 import { useEffect } from "react";
 import { useWebsiteStore } from "./store/store";
+import { WebsiteSelectProvider } from "./context/WebsiteSelectContext";
 
 function App() {
   const initializeStore = useWebsiteStore((state) => state.initialize);
@@ -15,15 +16,17 @@ function App() {
   }, [initializeStore]);
 
   return (
-    <>
-      <ScrollToTop />
-      <TopLoader />
-      <AuthProvider>
-        <Routes>
-          <Route path="/*" element={<AppRoutes />} />
-        </Routes>
-      </AuthProvider>
-    </>
+    <WebsiteSelectProvider>
+      <>
+        <ScrollToTop />
+        <TopLoader />
+        <AuthProvider>
+          <Routes>
+            <Route path="/*" element={<AppRoutes />} />
+          </Routes>
+        </AuthProvider>
+      </>
+    </WebsiteSelectProvider>
   );
 }
 

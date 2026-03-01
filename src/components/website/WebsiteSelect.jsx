@@ -41,19 +41,19 @@ const WebsiteSelect = ({ onDone }) => {
         return;
       }
 
+      const fetchedWebsites = await fetchWebsites();
+
       const stored = localStorage.getItem("selectedWebsite");
       if (stored) {
         setStoreWebsite(JSON.parse(stored));
-        setVisible(false);
-        return;
       }
-
-      const fetchedWebsites = await fetchWebsites();
 
       if (fetchedWebsites.length === 0) {
         setShowForm(true);
       } else {
-        setSelectedWebsite(fetchedWebsites[0]);
+        setSelectedWebsite(
+          stored ? JSON.parse(stored) : fetchedWebsites[0]
+        );
       }
 
       setVisible(true);
@@ -207,9 +207,8 @@ const WebsiteSelect = ({ onDone }) => {
                       </div>
                     </div>
                     <ChevronDown
-                      className={`w-5 h-5 text-gray-400 transition-all duration-300 ${
-                        showDropdown ? "rotate-180 text-indigo-600" : ""
-                      }`}
+                      className={`w-5 h-5 text-gray-400 transition-all duration-300 ${showDropdown ? "rotate-180 text-indigo-600" : ""
+                        }`}
                       strokeWidth={1.5}
                     />
                   </button>

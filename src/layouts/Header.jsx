@@ -4,7 +4,7 @@ import WebsiteDropdown from "../components/website/WebsiteDropdown";
 
 import { Menu, Globe, ChevronDown, Search, Bell } from "lucide-react";
 
-export default function Header({ setSidebarOpen }) {
+export default function Header({ setSidebarOpen, onNewWebsite }) {
   const { selectedWebsite } = useWebsiteStore();
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
@@ -52,6 +52,7 @@ export default function Header({ setSidebarOpen }) {
               <WebsiteDropdown
                 dropdownOpen={dropdownOpen}
                 setDropdownOpen={setDropdownOpen}
+                onNewWebsite={onNewWebsite}
               />
             </div>
           </div>

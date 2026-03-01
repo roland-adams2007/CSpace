@@ -1,7 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useWebsiteStore } from "../store/store";
-
-// Import all needed Lucide icons
 import {
   LayoutDashboard,
   Edit3,
@@ -17,11 +15,13 @@ import {
   FileText,
   LogOut,
 } from "lucide-react";
+import { useAuth } from "../context/Auth/UseAuth";
 
 export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { selectedWebsite } = useWebsiteStore();
+  const { user, loadingUser } = useAuth();
 
   const navItems = [
     { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -42,6 +42,32 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
       localStorage.clear();
       navigate("/login");
     }
+  };
+
+  const getUserInitials = () => {
+    if (user?.fname && user?.lname) {
+      return `${user.fname[0]}${user.lname[0]}`.toUpperCase();
+    }
+    if (user?.fname) {
+      return user.fname[0].toUpperCase();
+    }
+    if (user?.email) {
+      return user.email[0].toUpperCase();
+    }
+    return "U";
+  };
+
+  const getUserFullName = () => {
+    if (user?.fname && user?.lname) {
+      return `${user.fname} ${user.lname}`;
+    }
+    if (user?.fname) {
+      return user.fname;
+    }
+    if (user?.email) {
+      return user.email.split('@')[0];
+    }
+    return "User";
   };
 
   return (
@@ -119,21 +145,35 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen }) {
         <div className="px-3 py-3 border-t border-gray-100">
           <div className="flex items-center justify-between p-2.5 rounded-lg hover:bg-gray-50 transition-colors">
             <div className="flex items-center space-x-2.5 flex-1 min-w-0">
-              <div className="w-8 h-8 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                <span className="text-white font-medium text-xs">JD</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  John Doe
-                </p>
-                <p className="text-xs text-gray-500 truncate">Free Plan</p>
-              </div>
+              {loadingUser ? (
+                <>
+                  <div className="w-8 h-8 bg-gray-200 rounded-lg animate-pulse flex-shrink-0"></div>
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
+                    <div className="h-3 bg-gray-200 rounded animate-pulse w-1/2"></div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="w-8 h-8 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <span className="text-white font-medium text-xs">
+                      {getUserInitials()}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {getUserFullName()}
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
             <button
               onClick={handleLogout}
               className="p-1.5 hover:bg-gray-100 rounded-md transition-colors flex-shrink-0"
               title="Logout"
               type="button"
+              disabled={loadingUser}
             >
               <LogOut className="w-4 h-4 text-gray-500" />
             </button>

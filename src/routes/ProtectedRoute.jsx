@@ -1,16 +1,17 @@
-import { Navigate, Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router-dom";
 import WebsiteSelect from "../components/website/WebsiteSelect";
 import { useState, useEffect } from "react";
 import AppLoader from "../components/ui/loaders/AppLoader";
 import LoginModal from "../components/auth/LoginModal";
 import { useAuth } from "../context/Auth/UseAuth";
+import { useWebsiteSelect } from "../hooks/useWebsiteSelect";
 
 export default function ProtectedRoute() {
-  const [showWebsiteSelect, setShowWebsiteSelect] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const navigate = useNavigate();
   const { user, loadingUser } = useAuth();
+  const { showWebsiteSelect, setShowWebsiteSelect } = useWebsiteSelect();
 
   useEffect(() => {
     if (loadingUser) return;
@@ -28,7 +29,7 @@ export default function ProtectedRoute() {
     }
 
     setIsCheckingAuth(false);
-  }, [user, loadingUser]);
+  }, [user, loadingUser, setShowWebsiteSelect]);
 
   const handleLoginSuccess = () => {
     setShowLoginModal(false);
@@ -50,10 +51,10 @@ export default function ProtectedRoute() {
   if (isCheckingAuth || loadingUser) {
     return <AppLoader />;
   }
-if (showWebsiteSelect) {
-  return <WebsiteSelect onDone={() => setShowWebsiteSelect(false)} />;
-}
 
+  if (showWebsiteSelect) {
+    return <WebsiteSelect onDone={() => setShowWebsiteSelect(false)} />;
+  }
 
   if (!user) {
     return (
