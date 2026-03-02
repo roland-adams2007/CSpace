@@ -5,59 +5,215 @@ import axiosInstance from "./../api/axiosInstance";
 import SectionRenderer from "../components/ui/theme/SectionRenderer";
 import NotFound from "../components/errors/NotFound";
 
+// ─── Visitor / session identity ──────────────────────────────────────────────
+
 function getOrCreateVisitorId() {
   let id = localStorage.getItem("_vid");
-  if (!id) {
-    id = uuidv4();
-    localStorage.setItem("_vid", id);
-  }
+  if (!id) { id = uuidv4(); localStorage.setItem("_vid", id); }
   return id;
 }
 
 function getOrCreateSessionId() {
   let id = sessionStorage.getItem("_vsid");
-  if (!id) {
-    id = uuidv4();
-    sessionStorage.setItem("_vsid", id);
-  }
+  if (!id) { id = uuidv4(); sessionStorage.setItem("_vsid", id); }
   return id;
 }
 
-async function firePageView(websiteId, pageId) {
+// ─── Fire helpers (all fire-and-forget) ─────────────────────────────────────
+
+function post(path, body) {
   try {
-    await axiosInstance.post("/analytics/track/pageview", {
-      website_id: websiteId,
-      page_id: pageId ?? null,
-      visitor_id: getOrCreateVisitorId(),
-      session_id: getOrCreateSessionId(),
-      referer_url: document.referrer || null,
-      page_url: window.location.href,
-    });
+    axiosInstance.post(path, body).catch(() => {});
   } catch {}
 }
 
-async function firePerformance(websiteId) {
+function beacon(path, body) {
+  try {
+    const base = axiosInstance.defaults.baseURL || "";
+    const blob = new Blob([JSON.stringify(body)], { type: "application/json" });
+    navigator.sendBeacon(`${base}${path}`, blob);
+  } catch {}
+}
+
+function firePageView(websiteId) {
+  post("/analytics/track/pageview", {
+    website_id: websiteId,
+    visitor_id: getOrCreateVisitorId(),
+    session_id: getOrCreateSessionId(),
+    referer_url: document.referrer || null,
+    page_url: window.location.href,
+  });
+}
+
+function firePerformance(websiteId) {
   try {
     const nav = performance.getEntriesByType("navigation")[0];
     if (!nav) return;
-    await axiosInstance.post("/analytics/track/performance", {
+    post("/analytics/track/performance", {
       website_id: websiteId,
-      page_url: window.location.href,
       visitor_id: getOrCreateVisitorId(),
+      page_url: window.location.href,
       load_time: Math.round(nav.loadEventEnd - nav.startTime),
       dom_interactive: Math.round(nav.domInteractive - nav.startTime),
-      first_paint: Math.round(
-        (performance.getEntriesByName("first-paint")[0]?.startTime) ?? 0,
-      ),
-      first_contentful_paint: Math.round(
-        (performance.getEntriesByName("first-contentful-paint")[0]?.startTime) ?? 0,
-      ),
+      first_paint: Math.round(performance.getEntriesByName("first-paint")[0]?.startTime ?? 0),
+      first_contentful_paint: Math.round(performance.getEntriesByName("first-contentful-paint")[0]?.startTime ?? 0),
       time_to_interactive: Math.round(nav.domInteractive - nav.startTime),
     });
   } catch {}
 }
 
-function useAnalytics(websiteId, pageId, shouldTrack) {
+function fireEvent(websiteId, eventName, category, label, value, selector) {
+  post("/analytics/track/event", {
+    website_id: websiteId,
+    visitor_id: getOrCreateVisitorId(),
+    session_id: getOrCreateSessionId(),
+    event_name: eventName,
+    event_category: category || null,
+    event_label: label || null,
+    event_value: value ?? null,
+    page_url: window.location.href,
+    element_selector: selector || null,
+  });
+}
+
+function fireSessionExit(websiteId, sessionId, duration) {
+  beacon("/analytics/track/session-exit", {
+    session_id: sessionId,
+    exit_page: window.location.href,
+    duration,
+    website_id: websiteId,
+    visitor_id: getOrCreateVisitorId(),
+    page_url: window.location.href,
+  });
+}
+
+// ─── Form tracker: auto-detects forms in the rendered page ───────────────────
+
+function attachFormTrackers(websiteId) {
+  const tracked = new WeakMap();
+
+  const observe = () => {
+    document.querySelectorAll("form").forEach((form) => {
+      if (tracked.has(form)) return;
+      tracked.set(form, true);
+
+      const formName =
+        form.getAttribute("data-form-name") ||
+        form.getAttribute("aria-label") ||
+        form.querySelector("[name]")?.getAttribute("placeholder") ||
+        form.id ||
+        "Unnamed Form";
+
+      const startTime = new Date().toISOString().slice(0, 19).replace("T", " ");
+      const fieldsTouched = new Set();
+
+      form.addEventListener("focusin", (e) => {
+        if (e.target.name || e.target.id) {
+          fieldsTouched.add(e.target.name || e.target.id);
+        }
+      });
+
+      form.addEventListener("submit", () => {
+        const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+        post("/analytics/track/form", {
+          website_id: websiteId,
+          visitor_id: getOrCreateVisitorId(),
+          form_name: formName,
+          start_time: startTime,
+          completion_time: now,
+          is_completed: true,
+          field_interactions: [...fieldsTouched],
+        });
+        fireEvent(websiteId, "form_submit", "Form", formName);
+      });
+
+      // Track form start on first interaction
+      let started = false;
+      form.addEventListener("focusin", () => {
+        if (started) return;
+        started = true;
+        post("/analytics/track/form", {
+          website_id: websiteId,
+          visitor_id: getOrCreateVisitorId(),
+          form_name: formName,
+          start_time: startTime,
+          is_completed: false,
+          field_interactions: [],
+        });
+        fireEvent(websiteId, "form_start", "Form", formName);
+      });
+    });
+  };
+
+  // Run now and watch for dynamically injected forms
+  observe();
+  const mo = new MutationObserver(observe);
+  mo.observe(document.body, { childList: true, subtree: true });
+  return () => mo.disconnect();
+}
+
+// ─── Click tracker: tracks <a>, <button>, elements with data-track ───────────
+
+function attachClickTrackers(websiteId) {
+  const handler = (e) => {
+    const el = e.target.closest("a, button, [data-track]");
+    if (!el) return;
+
+    const tag = el.tagName.toLowerCase();
+    const label =
+      el.getAttribute("data-track-label") ||
+      el.getAttribute("aria-label") ||
+      el.textContent?.trim().slice(0, 60) ||
+      null;
+    const category =
+      el.getAttribute("data-track-category") ||
+      (tag === "a" ? "Link" : "Button");
+    const selector =
+      (el.id ? `#${el.id}` : null) ||
+      (el.className ? `.${[...el.classList].slice(0, 2).join(".")}` : null) ||
+      tag;
+
+    // Only track explicit data-track attrs OR links with hrefs OR buttons
+    const shouldTrack =
+      el.hasAttribute("data-track") ||
+      (tag === "a" && el.getAttribute("href")) ||
+      tag === "button";
+
+    if (!shouldTrack) return;
+
+    fireEvent(websiteId, "click", category, label, null, selector);
+  };
+
+  document.addEventListener("click", handler, { passive: true });
+  return () => document.removeEventListener("click", handler);
+}
+
+// ─── Scroll depth tracker: fires at 25%, 50%, 75%, 90% ──────────────────────
+
+function attachScrollTracker(websiteId) {
+  const milestones = [25, 50, 75, 90];
+  const fired = new Set();
+
+  const handler = () => {
+    const scrolled = window.scrollY + window.innerHeight;
+    const total = document.documentElement.scrollHeight;
+    const pct = Math.round((scrolled / total) * 100);
+
+    milestones.forEach((m) => {
+      if (pct >= m && !fired.has(m)) {
+        fired.add(m);
+        fireEvent(websiteId, "scroll_depth", "Engagement", `${m}%`, m);
+      }
+    });
+  };
+
+  window.addEventListener("scroll", handler, { passive: true });
+  return () => window.removeEventListener("scroll", handler);
+}
+
+// ─── Main analytics hook ─────────────────────────────────────────────────────
+
+function useAnalytics(websiteId, shouldTrack) {
   const sessionStartRef = useRef(Date.now());
   const firedRef = useRef(false);
 
@@ -65,7 +221,7 @@ function useAnalytics(websiteId, pageId, shouldTrack) {
     if (!shouldTrack || !websiteId || firedRef.current) return;
     firedRef.current = true;
 
-    firePageView(websiteId, pageId);
+    firePageView(websiteId);
 
     const onLoad = () => firePerformance(websiteId);
     if (document.readyState === "complete") {
@@ -75,26 +231,28 @@ function useAnalytics(websiteId, pageId, shouldTrack) {
     }
 
     const sessionId = getOrCreateSessionId();
+    const cleanupForms = attachFormTrackers(websiteId);
+    const cleanupClicks = attachClickTrackers(websiteId);
+    const cleanupScroll = attachScrollTracker(websiteId);
 
     const onExit = () => {
       const duration = Math.round((Date.now() - sessionStartRef.current) / 1000);
-      navigator.sendBeacon(
-        `${axiosInstance.defaults.baseURL}/analytics/track/session-exit`,
-        JSON.stringify({
-          session_id: sessionId,
-          exit_page: window.location.href,
-          duration,
-        }),
-      );
+      fireSessionExit(websiteId, sessionId, duration);
     };
 
     window.addEventListener("beforeunload", onExit);
+
     return () => {
       window.removeEventListener("beforeunload", onExit);
       window.removeEventListener("load", onLoad);
+      cleanupForms();
+      cleanupClicks();
+      cleanupScroll();
     };
-  }, [shouldTrack, websiteId, pageId]);
+  }, [shouldTrack, websiteId]);
 }
+
+// ─── Preview component ───────────────────────────────────────────────────────
 
 export default function Preview() {
   const { themeSlug, websiteSlug } = useParams();
@@ -113,15 +271,15 @@ export default function Preview() {
     typeof window !== "undefined" &&
     new URLSearchParams(window.location.search).get("preview") === "true";
 
+  // Analytics only fires on /c/:websiteSlug (live), never on /t/:themeSlug or ?preview=true
   const isLiveWebsite = !!websiteSlug && !isPreviewMode;
   const websiteId = websiteInfo?.id ?? null;
 
-  useAnalytics(websiteId, null, isLiveWebsite && !!config);
+  useAnalytics(websiteId, isLiveWebsite && !!config);
 
   useEffect(() => {
     const loadContent = async () => {
       const slugToLoad = themeSlug || websiteSlug;
-
       if (currentSlug.current === slugToLoad && hasFetched.current) return;
 
       currentSlug.current = slugToLoad;
@@ -140,7 +298,7 @@ export default function Preview() {
           );
           themeData = response.data.data.theme;
 
-          if (themeData && themeData.website_id) {
+          if (themeData?.website_id) {
             try {
               const websiteResponse = await axiosInstance.get(
                 `/public/websites/${themeData.website_id}${isPreviewMode ? "?preview=true" : ""}`,
@@ -182,7 +340,6 @@ export default function Preview() {
         }
       } catch (err) {
         console.error("Failed to load preview:", err);
-
         if (err.response?.status === 404) {
           setNotFound(true);
           setError(themeSlug ? "Theme not found" : "Website not found");
@@ -197,9 +354,7 @@ export default function Preview() {
       }
     };
 
-    if (themeSlug || websiteSlug) {
-      loadContent();
-    }
+    if (themeSlug || websiteSlug) loadContent();
   }, [themeSlug, websiteSlug, isPreviewMode]);
 
   if (loading && isPreviewMode) {
@@ -211,9 +366,7 @@ export default function Preview() {
     );
   }
 
-  if (notFound) {
-    return <NotFound />;
-  }
+  if (notFound) return <NotFound />;
 
   if (error) {
     return (
@@ -262,8 +415,7 @@ export default function Preview() {
     name: theme?.name || websiteInfo?.name,
     slug: themeSlug || websiteSlug,
     websiteName: websiteInfo?.name,
-    isPublished,
-    isActive,
+    isPublished, isActive,
     themeName: theme?.name,
     isPreviewMode,
   };
@@ -275,7 +427,6 @@ export default function Preview() {
   return (
     <>
       {googleFontsUrl && <link rel="stylesheet" href={googleFontsUrl} />}
-
       <style>{`
         *, *::before, *::after { box-sizing: border-box; }
         html, body { margin: 0; padding: 0; }
@@ -295,7 +446,6 @@ export default function Preview() {
           This website is in draft mode. Only published websites are visible to the public.
         </div>
       )}
-
       {!isPreviewMode && theme && !isActive && themeSlug && (
         <div className="fixed top-0 left-0 right-0 z-[9999] bg-amber-500 text-white text-center py-1 text-xs">
           This theme is not active. The website may not display correctly.
@@ -307,31 +457,15 @@ export default function Preview() {
       ) : (
         <>
           {headerSection && (
-            <SectionRenderer
-              key={headerSection.id}
-              section={headerSection}
-              themeColors={themeColors}
-              isPreview={true}
-            />
+            <SectionRenderer key={headerSection.id} section={headerSection} themeColors={themeColors} isPreview={true} />
           )}
-
           {bodySections.map((section) => (
             <div key={section.id} id={section.id}>
-              <SectionRenderer
-                section={section}
-                themeColors={themeColors}
-                isPreview={true}
-              />
+              <SectionRenderer section={section} themeColors={themeColors} isPreview={true} />
             </div>
           ))}
-
           {footerSection && (
-            <SectionRenderer
-              key={footerSection.id}
-              section={footerSection}
-              themeColors={themeColors}
-              isPreview={true}
-            />
+            <SectionRenderer key={footerSection.id} section={footerSection} themeColors={themeColors} isPreview={true} />
           )}
         </>
       )}
@@ -344,7 +478,6 @@ function PreviewBanner({ previewInfo }) {
   if (!visible) return null;
 
   const { type, name, slug, websiteName, isPublished, isActive, themeName } = previewInfo;
-
   let bannerColor = "#4f46e5";
   if (type === "website" && !isPublished) bannerColor = "#f59e0b";
   else if (type === "theme" && !isActive) bannerColor = "#f59e0b";
@@ -357,7 +490,6 @@ function PreviewBanner({ previewInfo }) {
       <div className="flex items-center gap-2.5">
         <span className="w-2 h-2 rounded-full bg-yellow-300 animate-pulse flex-shrink-0" />
         <span className="font-semibold tracking-tight">Preview Mode</span>
-
         {type === "website" && (
           <>
             <span className="opacity-40 select-none">·</span>
@@ -420,10 +552,7 @@ function StartupLoader({ loader }) {
     const fadeAt = Math.max(duration - 400, 0);
     const fadeTimer = setTimeout(() => setFading(true), fadeAt);
     const hideTimer = setTimeout(() => setVisible(false), duration);
-    return () => {
-      clearTimeout(fadeTimer);
-      clearTimeout(hideTimer);
-    };
+    return () => { clearTimeout(fadeTimer); clearTimeout(hideTimer); };
   }, [loader.duration]);
 
   if (!visible) return null;
