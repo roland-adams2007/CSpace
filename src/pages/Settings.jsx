@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../context/Auth/UseAuth";
 import { useWebsiteStore, useTeamStore } from "../store/store";
 import { useSearchParams } from "react-router-dom";
+import { useAlert } from "../context/Alert/UseAlert";
 import axiosInstance from "../api/axiosInstance";
 
 
@@ -52,11 +53,12 @@ const SettingsSkeleton = () => (
 );
 
 const Settings = () => {
-    const { selectedWebsite } = useWebsiteStore();
-    const { user } = useAuth();
+    const { selectedWebsite, updateWebsite } = useWebsiteStore();
+    const { user, updateUser } = useAuth();
     const { members, loading: teamLoading, getTeamMembers } = useTeamStore();
     const [searchParams, setSearchParams] = useSearchParams();
     const [teamReady, setTeamReady] = useState(false);
+    const { showAlert } = useAlert();
 
     const activeTab = searchParams.get("tab") || "website";
 
@@ -83,6 +85,8 @@ const Settings = () => {
 
     const [websiteSaved, setWebsiteSaved] = useState(false);
     const [userSaved, setUserSaved] = useState(false);
+    const [isSubmittingWebsite, setIsSubmittingWebsite] = useState(false);
+    const [isSubmittingUser, setIsSubmittingUser] = useState(false);
     const [passwordError, setPasswordError] = useState("");
 
     useEffect(() => {
@@ -92,7 +96,7 @@ const Settings = () => {
                 setTeamReady(true);
             });
         }
-    }, [selectedWebsite?.id]);
+    }, [selectedWebsite?.id, getTeamMembers]);
 
     useEffect(() => {
         setWebsiteForm({
@@ -126,26 +130,87 @@ const Settings = () => {
     const handleUserChange = (e) => {
         const { name, value } = e.target;
         setUserForm((prev) => ({ ...prev, [name]: value }));
+        if (name === "newPassword" || name === "confirmPassword") {
+            setPasswordError("");
+        }
     };
 
-    const handleWebsiteSubmit = (e) => {
+    const handleWebsiteSubmit = async (e) => {
         e.preventDefault();
         if (!canEditWebsite) return;
-        console.log("Save website settings:", websiteForm);
-        setWebsiteSaved(true);
-        setTimeout(() => setWebsiteSaved(false), 3000);
+
+        setIsSubmittingWebsite(true);
+        setWebsiteSaved(false);
+
+        try {
+            const response = await updateWebsite({
+                id: selectedWebsite.id,
+                name: websiteForm.name,
+                is_published: websiteForm.is_published,
+                slug: websiteForm.slug
+            });
+
+            setWebsiteSaved(true);
+            showAlert('Website settings updated successfully!', 'success');
+
+            setTimeout(() => setWebsiteSaved(false), 3000);
+        } catch (error) {
+            const errorMessage = error.response?.data?.message || 'Failed to update website settings';
+            showAlert(errorMessage, 'error');
+            console.error('Website update error:', error);
+        } finally {
+            setIsSubmittingWebsite(false);
+        }
     };
 
-    const handleUserSubmit = (e) => {
+    const handleUserSubmit = async (e) => {
         e.preventDefault();
         setPasswordError("");
+
         if (userForm.newPassword && userForm.newPassword !== userForm.confirmPassword) {
             setPasswordError("New passwords do not match.");
             return;
         }
-        console.log("Save user settings:", userForm);
-        setUserSaved(true);
-        setTimeout(() => setUserSaved(false), 3000);
+
+        setIsSubmittingUser(true);
+        setUserSaved(false);
+
+        try {
+            const updateData = {
+                fname: userForm.fname,
+                lname: userForm.lname,
+                email: userForm.email,
+            };
+
+            if (userForm.currentPassword && userForm.newPassword) {
+                updateData.currentPassword = userForm.currentPassword;
+                updateData.newPassword = userForm.newPassword;
+            }
+
+            const response = await axiosInstance.put('/users/update', updateData);
+
+            if (response.data.user) {
+                updateUser(response.data.user);
+            }
+
+            setUserSaved(true);
+            showAlert('Profile updated successfully!', 'success');
+
+            setUserForm(prev => ({
+                ...prev,
+                currentPassword: "",
+                newPassword: "",
+                confirmPassword: "",
+            }));
+
+            setTimeout(() => setUserSaved(false), 3000);
+        } catch (error) {
+            const errorMessage = error.response?.data?.message || 'Failed to update profile';
+            showAlert(errorMessage, 'error');
+            console.error('User update error:', error);
+        } finally {
+            setIsSubmittingUser(false);
+        }
     };
 
     if (!teamReady || teamLoading) {
@@ -222,7 +287,7 @@ const Settings = () => {
                                 name="name"
                                 value={websiteForm.name}
                                 onChange={handleWebsiteChange}
-                                disabled={!canEditWebsite}
+                                disabled={!canEditWebsite || isSubmittingWebsite}
                                 className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed"
                                 placeholder="My Website"
                             />
@@ -241,7 +306,7 @@ const Settings = () => {
                                     name="slug"
                                     value={websiteForm.slug}
                                     onChange={handleWebsiteChange}
-                                    disabled={!canEditWebsite}
+                                    disabled={!canEditWebsite || isSubmittingWebsite}
                                     className="flex-1 px-3 py-2 rounded-r-lg border border-gray-300 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed"
                                     placeholder="my-website"
                                 />
@@ -260,7 +325,7 @@ const Settings = () => {
                                     name="is_published"
                                     checked={websiteForm.is_published}
                                     onChange={handleWebsiteChange}
-                                    disabled={!canEditWebsite}
+                                    disabled={!canEditWebsite || isSubmittingWebsite}
                                     className="sr-only peer"
                                 />
                                 <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
@@ -277,9 +342,20 @@ const Settings = () => {
                                 )}
                                 <button
                                     type="submit"
-                                    className="px-5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+                                    disabled={isSubmittingWebsite}
+                                    className="px-5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                                 >
-                                    Save Changes
+                                    {isSubmittingWebsite ? (
+                                        <>
+                                            <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        'Save Changes'
+                                    )}
                                 </button>
                             </div>
                         )}
@@ -316,7 +392,8 @@ const Settings = () => {
                                         name="fname"
                                         value={userForm.fname}
                                         onChange={handleUserChange}
-                                        className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                        disabled={isSubmittingUser}
+                                        className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
                                         placeholder="First name"
                                     />
                                 </div>
@@ -327,7 +404,8 @@ const Settings = () => {
                                         name="lname"
                                         value={userForm.lname}
                                         onChange={handleUserChange}
-                                        className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                        disabled={isSubmittingUser}
+                                        className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
                                         placeholder="Last name"
                                     />
                                 </div>
@@ -340,7 +418,8 @@ const Settings = () => {
                                     name="email"
                                     value={userForm.email}
                                     onChange={handleUserChange}
-                                    className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                    disabled={isSubmittingUser}
+                                    className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
                                     placeholder="your@email.com"
                                 />
                             </div>
@@ -355,7 +434,8 @@ const Settings = () => {
                                             name="currentPassword"
                                             value={userForm.currentPassword}
                                             onChange={handleUserChange}
-                                            className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                            disabled={isSubmittingUser}
+                                            className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
                                             placeholder="Enter current password"
                                         />
                                     </div>
@@ -367,7 +447,8 @@ const Settings = () => {
                                                 name="newPassword"
                                                 value={userForm.newPassword}
                                                 onChange={handleUserChange}
-                                                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                                disabled={isSubmittingUser}
+                                                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
                                                 placeholder="New password"
                                             />
                                         </div>
@@ -378,7 +459,8 @@ const Settings = () => {
                                                 name="confirmPassword"
                                                 value={userForm.confirmPassword}
                                                 onChange={handleUserChange}
-                                                className={`w-full px-3 py-2 rounded-lg border text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${passwordError ? "border-red-400 bg-red-50" : "border-gray-300"}`}
+                                                disabled={isSubmittingUser}
+                                                className={`w-full px-3 py-2 rounded-lg border text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500 ${passwordError ? "border-red-400 bg-red-50" : "border-gray-300"}`}
                                                 placeholder="Confirm new password"
                                             />
                                         </div>
@@ -401,9 +483,20 @@ const Settings = () => {
                                 )}
                                 <button
                                     type="submit"
-                                    className="px-5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+                                    disabled={isSubmittingUser}
+                                    className="px-5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                                 >
-                                    Save Changes
+                                    {isSubmittingUser ? (
+                                        <>
+                                            <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        'Save Changes'
+                                    )}
                                 </button>
                             </div>
                         </form>
