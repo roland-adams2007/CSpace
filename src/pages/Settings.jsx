@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/Auth/UseAuth";
 import { useWebsiteStore, useTeamStore } from "../store/store";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { useAlert } from "../context/Alert/UseAlert";
 import axiosInstance from "../api/axiosInstance";
-
+import ConfirmModal from "../components/ui/modals/ConfirmModal";
 
 const OWNER_ROLES = ["owner", "admin"];
 
@@ -53,12 +53,13 @@ const SettingsSkeleton = () => (
 );
 
 const Settings = () => {
-    const { selectedWebsite, updateWebsite } = useWebsiteStore();
+    const { selectedWebsite, updateWebsite, removeWebsite, fetchWebsites } = useWebsiteStore();
     const { user, updateUser } = useAuth();
     const { members, loading: teamLoading, getTeamMembers } = useTeamStore();
     const [searchParams, setSearchParams] = useSearchParams();
     const [teamReady, setTeamReady] = useState(false);
     const { showAlert } = useAlert();
+    const navigate = useNavigate();
 
     const activeTab = searchParams.get("tab") || "website";
 
@@ -67,6 +68,7 @@ const Settings = () => {
     );
     const userRole = teamReady ? (currentMember?.role || "viewer") : null;
     const canEditWebsite = teamReady && OWNER_ROLES.includes(userRole);
+    const isOwner = teamReady && userRole === "owner";
 
     const [websiteForm, setWebsiteForm] = useState({
         name: selectedWebsite?.name || "",
@@ -88,6 +90,9 @@ const Settings = () => {
     const [isSubmittingWebsite, setIsSubmittingWebsite] = useState(false);
     const [isSubmittingUser, setIsSubmittingUser] = useState(false);
     const [passwordError, setPasswordError] = useState("");
+
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
         if (selectedWebsite?.id) {
@@ -213,12 +218,37 @@ const Settings = () => {
         }
     };
 
+    const handleDeleteWebsite = async () => {
+        if (!selectedWebsite?.id || !isOwner) return;
+
+        setIsDeleting(true);
+        try {
+            await axiosInstance.delete(`/websites/delete/${selectedWebsite.id}`);
+            removeWebsite(selectedWebsite.id);
+            showAlert('Website deleted successfully!', 'success');
+        } catch (error) {
+            const errorMessage = error.response?.data?.message || 'Failed to delete website';
+            showAlert(errorMessage, 'error');
+            console.error('Website delete error:', error);
+        } finally {
+            setIsDeleting(false);
+            setDeleteModalOpen(false);
+        }
+    };
     if (!teamReady || teamLoading) {
         return <SettingsSkeleton />;
     }
 
     return (
         <div className="max-w-3xl mx-auto">
+            <ConfirmModal
+                isOpen={deleteModalOpen}
+                onClose={() => setDeleteModalOpen(false)}
+                onConfirm={handleDeleteWebsite}
+                title="Delete Website"
+                message={`Are you sure you want to delete "${selectedWebsite?.name}"? This action cannot be undone and will permanently remove all pages, assets, and team members associated with this website.`}
+            />
+
             <div className="mb-6">
                 <h2 className="text-xl font-semibold text-gray-900">Settings</h2>
                 <p className="text-sm text-gray-500 mt-0.5">Manage your website and account preferences</p>
@@ -319,7 +349,8 @@ const Settings = () => {
                                 <p className="text-sm font-medium text-gray-900">Published</p>
                                 <p className="text-xs text-gray-500 mt-0.5">Make your website visible to the public</p>
                             </div>
-                            <label className={`relative inline-flex items-center ${!canEditWebsite ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}>
+                            <label className={`relative inline-flex items-center ${!canEditWebsite ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+                                }`}>
                                 <input
                                     type="checkbox"
                                     name="is_published"
@@ -333,31 +364,70 @@ const Settings = () => {
                         </div>
 
                         {canEditWebsite && (
-                            <div className="flex items-center justify-end gap-3 pt-2">
-                                {websiteSaved && (
-                                    <span className="flex items-center gap-1.5 text-sm text-emerald-600">
-                                        <i data-lucide="check-circle" className="w-4 h-4"></i>
-                                        Saved successfully
-                                    </span>
-                                )}
-                                <button
-                                    type="submit"
-                                    disabled={isSubmittingWebsite}
-                                    className="px-5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                                >
-                                    {isSubmittingWebsite ? (
-                                        <>
-                                            <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                            Saving...
-                                        </>
-                                    ) : (
-                                        'Save Changes'
+                            <>
+                                <div className="flex items-center justify-end gap-3 pt-2">
+                                    {websiteSaved && (
+                                        <span className="flex items-center gap-1.5 text-sm text-emerald-600">
+                                            <i data-lucide="check-circle" className="w-4 h-4"></i>
+                                            Saved successfully
+                                        </span>
                                     )}
-                                </button>
-                            </div>
+                                    <button
+                                        type="submit"
+                                        disabled={isSubmittingWebsite}
+                                        className="px-5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                    >
+                                        {isSubmittingWebsite ? (
+                                            <>
+                                                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                Saving...
+                                            </>
+                                        ) : (
+                                            'Save Changes'
+                                        )}
+                                    </button>
+                                </div>
+
+                                {isOwner && (
+                                    <div className="mt-8 pt-6 border-t border-gray-200">
+                                        <div className="bg-red-50 rounded-lg border border-red-200 p-4">
+                                            <div className="flex items-start gap-3">
+                                                <i data-lucide="alert-triangle" className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5"></i>
+                                                <div className="flex-1">
+                                                    <h4 className="text-sm font-semibold text-red-800 mb-1">Danger Zone</h4>
+                                                    <p className="text-sm text-red-700 mb-3">
+                                                        Once you delete this website, all of its pages, assets, and data will be permanently removed. This action cannot be undone.
+                                                    </p>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setDeleteModalOpen(true)}
+                                                        disabled={isDeleting}
+                                                        className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                                    >
+                                                        {isDeleting ? (
+                                                            <>
+                                                                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                                </svg>
+                                                                Deleting...
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <i data-lucide="trash-2" className="w-4 h-4"></i>
+                                                                Delete Website
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </form>
                 </div>
@@ -460,7 +530,8 @@ const Settings = () => {
                                                 value={userForm.confirmPassword}
                                                 onChange={handleUserChange}
                                                 disabled={isSubmittingUser}
-                                                className={`w-full px-3 py-2 rounded-lg border text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500 ${passwordError ? "border-red-400 bg-red-50" : "border-gray-300"}`}
+                                                className={`w-full px-3 py-2 rounded-lg border text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500 ${passwordError ? "border-red-400 bg-red-50" : "border-gray-300"
+                                                    }`}
                                                 placeholder="Confirm new password"
                                             />
                                         </div>

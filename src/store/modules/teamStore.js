@@ -10,16 +10,10 @@ export const useTeamStore = create((set, get) => ({
 
   getTeamMembers: async (websiteId) => {
     set({ loading: true, error: null });
-
     try {
       const response = await axiosInstance.get(`/team/${websiteId}`);
       const members = response.data.data.members || [];
-
-      set({
-        members,
-        loading: false,
-      });
-
+      set({ members, loading: false });
       return members;
     } catch (error) {
       set({
@@ -32,18 +26,12 @@ export const useTeamStore = create((set, get) => ({
 
   getPendingInvitations: async (websiteId) => {
     set({ loading: true, error: null });
-
     try {
       const response = await axiosInstance.get(
         `/team/${websiteId}/invitations`,
       );
       const invitations = response.data.data.invitations || [];
-
-      set({
-        pendingInvitations: invitations,
-        loading: false,
-      });
-
+      set({ pendingInvitations: invitations, loading: false });
       return invitations;
     } catch (error) {
       set({
@@ -56,16 +44,13 @@ export const useTeamStore = create((set, get) => ({
 
   sendTeamInvite: async (payload) => {
     set({ loading: true, error: null });
-
     try {
       const response = await axiosInstance.post("/team/invite/send", payload);
       const invitation = response.data.data.invitation;
-
       set((state) => ({
         pendingInvitations: [invitation, ...state.pendingInvitations],
         loading: false,
       }));
-
       return invitation;
     } catch (error) {
       set({
@@ -78,11 +63,9 @@ export const useTeamStore = create((set, get) => ({
 
   acceptTeamInvite: async (payload) => {
     set({ loading: true, error: null });
-
     try {
       const response = await axiosInstance.post("/team/invite/accept", payload);
       const member = response.data.data.member;
-
       set((state) => ({
         members: [member, ...state.members],
         pendingInvitations: state.pendingInvitations.filter(
@@ -90,7 +73,6 @@ export const useTeamStore = create((set, get) => ({
         ),
         loading: false,
       }));
-
       return member;
     } catch (error) {
       set({
@@ -103,10 +85,8 @@ export const useTeamStore = create((set, get) => ({
 
   declineInvitation: async (invitationId) => {
     set({ loading: true, error: null });
-
     try {
       await axiosInstance.post("/team/invite/decline", { invitationId });
-
       set((state) => ({
         pendingInvitations: state.pendingInvitations.filter(
           (inv) => inv.id !== invitationId,
@@ -124,10 +104,8 @@ export const useTeamStore = create((set, get) => ({
 
   removeMember: async (memberId) => {
     set({ loading: true, error: null });
-
     try {
       await axiosInstance.delete(`/team/${memberId}`);
-
       set((state) => ({
         members: state.members.filter((member) => member.id !== memberId),
         loading: false,
@@ -141,18 +119,36 @@ export const useTeamStore = create((set, get) => ({
     }
   },
 
+  // NEW: Update member role
+  updateMemberRole: async (memberId, role) => {
+    set({ loading: true, error: null });
+    try {
+      const response = await axiosInstance.patch(`/team/${memberId}/role`, {
+        role,
+      });
+      const updatedMember = response.data.data.member;
+      set((state) => ({
+        members: state.members.map((member) =>
+          member.id === memberId ? { ...member, role } : member,
+        ),
+        loading: false,
+      }));
+      return updatedMember;
+    } catch (error) {
+      set({
+        error: error.response?.data?.message || "Failed to update member role",
+        loading: false,
+      });
+      throw error;
+    }
+  },
+
   fetchInvitationDetails: async (token) => {
     set({ loading: true, error: null });
-
     try {
       const response = await axiosInstance.get(`/team/invite/${token}`);
       const invitation = response.data.data.invitation;
-
-      set({
-        currentInvitation: invitation,
-        loading: false,
-      });
-
+      set({ currentInvitation: invitation, loading: false });
       return invitation;
     } catch (error) {
       set({
@@ -165,17 +161,11 @@ export const useTeamStore = create((set, get) => ({
   },
 
   clearCurrentInvitation: () => {
-    set({
-      currentInvitation: null,
-    });
+    set({ currentInvitation: null });
   },
 
   clearTeam: () => {
-    set({
-      members: [],
-      pendingInvitations: [],
-      error: null,
-    });
+    set({ members: [], pendingInvitations: [], error: null });
   },
 
   get memberCount() {

@@ -13,6 +13,7 @@ import Team from "../pages/Teams";
 import TeamInvite from "../components/teams/TeamInvite";
 import Settings from "../pages/Settings";
 import HomePage from "../pages/HomePage";
+import Anaytics from "../pages/Anaytics";
 
 const Login = lazy(() => import("../components/auth/Login"));
 const Register = lazy(() => import("../components/auth/Register"));
@@ -40,7 +41,7 @@ export default function AppRoutes() {
             <Route path="/files" element={<FIleManager />} />
             <Route path="/forms" element={<Forms />} />
             <Route path="/automations" element={<>Automations</>} />
-            <Route path="/analytics" element={<>Analytics</>} />
+            <Route path="/analytics" element={<Anaytics />} />
             <Route path="/team" element={<Team />} />
             <Route path="/settings" element={<Settings />} />
           </Route>

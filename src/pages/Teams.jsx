@@ -18,6 +18,7 @@ const Team = () => {
         sendTeamInvite,
         removeMember,
         declineInvitation,
+        updateMemberRole,
         clearTeam
     } = useTeamStore();
 
@@ -27,7 +28,10 @@ const Team = () => {
     const [activeTab, setActiveTab] = useState("members");
     const [showInviteModal, setShowInviteModal] = useState(false);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [showRoleModal, setShowRoleModal] = useState(false);
     const [selectedMember, setSelectedMember] = useState(null);
+    const [newRole, setNewRole] = useState("");
+    const [roleUpdateError, setRoleUpdateError] = useState("");
     const [inviteEmail, setInviteEmail] = useState("");
     const [inviteRole, setInviteRole] = useState("editor");
     const [searchTerm, setSearchTerm] = useState("");
@@ -39,7 +43,6 @@ const Team = () => {
     const itemsPerPage = 10;
 
     const currentUserRole = members.find(m => m.email === user?.email)?.role;
-
     const canManageTeam = currentUserRole === 'owner' || currentUserRole === 'admin';
 
     useEffect(() => {
@@ -76,7 +79,6 @@ const Team = () => {
 
     const handleSendInvite = async () => {
         if (!inviteEmail || !selectedWebsite?.id || !canManageTeam) return;
-
         setInviteError("");
         try {
             await sendTeamInvite({
@@ -103,6 +105,31 @@ const Team = () => {
     const handleDeclineInvitation = async (invitationId) => {
         if (canManageTeam) {
             await declineInvitation(invitationId);
+        }
+    };
+
+    const openRoleModal = (member) => {
+        setSelectedMember(member);
+        setNewRole(member.role);
+        setRoleUpdateError("");
+        setShowRoleModal(true);
+        setShowActionsMenu(null);
+    };
+
+    const handleUpdateRole = async () => {
+        if (!selectedMember || !newRole || !canManageTeam) return;
+        if (newRole === selectedMember.role) {
+            setShowRoleModal(false);
+            return;
+        }
+        setRoleUpdateError("");
+        try {
+            await updateMemberRole(selectedMember.id, newRole);
+            setShowRoleModal(false);
+            setSelectedMember(null);
+            setNewRole("");
+        } catch (error) {
+            setRoleUpdateError(error.message || "Failed to update role");
         }
     };
 
@@ -277,6 +304,13 @@ const Team = () => {
                                                     {showActionsMenu === member.id && (
                                                         <div className="absolute right-4 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
                                                             <button
+                                                                onClick={() => openRoleModal(member)}
+                                                                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2"
+                                                            >
+                                                                <Shield size={14} />
+                                                                Change role
+                                                            </button>
+                                                            <button
                                                                 onClick={() => {
                                                                     setSelectedMember(member);
                                                                     setShowConfirmModal(true);
@@ -405,6 +439,7 @@ const Team = () => {
                 </>
             )}
 
+            {/* Invite Modal */}
             {showInviteModal && canManageTeam && (
                 <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center p-4">
                     <div className="bg-white border border-gray-200 rounded-lg max-w-md w-full shadow-xl">
@@ -490,6 +525,89 @@ const Team = () => {
                                     <>
                                         <Mail size={16} />
                                         Send Invitation
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Change Role Modal */}
+            {showRoleModal && selectedMember && canManageTeam && (
+                <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white border border-gray-200 rounded-lg max-w-md w-full shadow-xl">
+                        <div className="flex items-center justify-between p-4 border-b border-gray-100">
+                            <h3 className="text-lg font-semibold text-gray-900">Change Role</h3>
+                            <button
+                                onClick={() => {
+                                    setShowRoleModal(false);
+                                    setSelectedMember(null);
+                                    setNewRole("");
+                                    setRoleUpdateError("");
+                                }}
+                                className="p-1 hover:bg-gray-100 rounded transition-colors text-gray-500 hover:text-gray-700"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            {roleUpdateError && (
+                                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700 text-sm">
+                                    <AlertCircle size={16} />
+                                    {roleUpdateError}
+                                </div>
+                            )}
+                            <div className="flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-lg">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-medium text-sm">
+                                    {getInitials(selectedMember.fname, selectedMember.lname)}
+                                </div>
+                                <div>
+                                    <div className="font-medium text-gray-900">{selectedMember.fname} {selectedMember.lname}</div>
+                                    <div className="text-sm text-gray-500">{selectedMember.email}</div>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    New Role
+                                </label>
+                                <select
+                                    value={newRole}
+                                    onChange={(e) => setNewRole(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                                >
+                                    <option value="admin">Admin - Full access</option>
+                                    <option value="editor">Editor - Can edit content</option>
+                                    <option value="viewer">Viewer - Can only view</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-end gap-3 p-4 border-t border-gray-100">
+                            <button
+                                onClick={() => {
+                                    setShowRoleModal(false);
+                                    setSelectedMember(null);
+                                    setNewRole("");
+                                    setRoleUpdateError("");
+                                }}
+                                className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors text-gray-700 text-sm"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleUpdateRole}
+                                disabled={loading || newRole === selectedMember.role}
+                                className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 transition-colors text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            >
+                                {loading ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                        Updating...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Check size={16} />
+                                        Update Role
                                     </>
                                 )}
                             </button>

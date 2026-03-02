@@ -1,8 +1,100 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
+import { v4 as uuidv4 } from "uuid";
 import axiosInstance from "./../api/axiosInstance";
 import SectionRenderer from "../components/ui/theme/SectionRenderer";
 import NotFound from "../components/errors/NotFound";
+
+function getOrCreateVisitorId() {
+  let id = localStorage.getItem("_vid");
+  if (!id) {
+    id = uuidv4();
+    localStorage.setItem("_vid", id);
+  }
+  return id;
+}
+
+function getOrCreateSessionId() {
+  let id = sessionStorage.getItem("_vsid");
+  if (!id) {
+    id = uuidv4();
+    sessionStorage.setItem("_vsid", id);
+  }
+  return id;
+}
+
+async function firePageView(websiteId, pageId) {
+  try {
+    await axiosInstance.post("/analytics/track/pageview", {
+      website_id: websiteId,
+      page_id: pageId ?? null,
+      visitor_id: getOrCreateVisitorId(),
+      session_id: getOrCreateSessionId(),
+      referer_url: document.referrer || null,
+      page_url: window.location.href,
+    });
+  } catch {}
+}
+
+async function firePerformance(websiteId) {
+  try {
+    const nav = performance.getEntriesByType("navigation")[0];
+    if (!nav) return;
+    await axiosInstance.post("/analytics/track/performance", {
+      website_id: websiteId,
+      page_url: window.location.href,
+      visitor_id: getOrCreateVisitorId(),
+      load_time: Math.round(nav.loadEventEnd - nav.startTime),
+      dom_interactive: Math.round(nav.domInteractive - nav.startTime),
+      first_paint: Math.round(
+        (performance.getEntriesByName("first-paint")[0]?.startTime) ?? 0,
+      ),
+      first_contentful_paint: Math.round(
+        (performance.getEntriesByName("first-contentful-paint")[0]?.startTime) ?? 0,
+      ),
+      time_to_interactive: Math.round(nav.domInteractive - nav.startTime),
+    });
+  } catch {}
+}
+
+function useAnalytics(websiteId, pageId, shouldTrack) {
+  const sessionStartRef = useRef(Date.now());
+  const firedRef = useRef(false);
+
+  useEffect(() => {
+    if (!shouldTrack || !websiteId || firedRef.current) return;
+    firedRef.current = true;
+
+    firePageView(websiteId, pageId);
+
+    const onLoad = () => firePerformance(websiteId);
+    if (document.readyState === "complete") {
+      onLoad();
+    } else {
+      window.addEventListener("load", onLoad, { once: true });
+    }
+
+    const sessionId = getOrCreateSessionId();
+
+    const onExit = () => {
+      const duration = Math.round((Date.now() - sessionStartRef.current) / 1000);
+      navigator.sendBeacon(
+        `${axiosInstance.defaults.baseURL}/analytics/track/session-exit`,
+        JSON.stringify({
+          session_id: sessionId,
+          exit_page: window.location.href,
+          duration,
+        }),
+      );
+    };
+
+    window.addEventListener("beforeunload", onExit);
+    return () => {
+      window.removeEventListener("beforeunload", onExit);
+      window.removeEventListener("load", onLoad);
+    };
+  }, [shouldTrack, websiteId, pageId]);
+}
 
 export default function Preview() {
   const { themeSlug, websiteSlug } = useParams();
@@ -20,6 +112,11 @@ export default function Preview() {
   const isPreviewMode =
     typeof window !== "undefined" &&
     new URLSearchParams(window.location.search).get("preview") === "true";
+
+  const isLiveWebsite = !!websiteSlug && !isPreviewMode;
+  const websiteId = websiteInfo?.id ?? null;
+
+  useAnalytics(websiteId, null, isLiveWebsite && !!config);
 
   useEffect(() => {
     const loadContent = async () => {
@@ -171,7 +268,6 @@ export default function Preview() {
     isPreviewMode,
   };
 
-  // Separate header/footer from body sections so we can control their wrappers
   const headerSection = sections.find((s) => s.type === "header");
   const footerSection = sections.find((s) => s.type === "footer");
   const bodySections = sections.filter((s) => s.type !== "header" && s.type !== "footer");
@@ -210,11 +306,6 @@ export default function Preview() {
         <EmptyState />
       ) : (
         <>
-          {/*
-            Header: rendered WITHOUT a wrapper div so position:sticky on the inner
-            element works against the viewport (the natural scroll container).
-            Any wrapping div — even an empty one — can break sticky in some browsers.
-          */}
           {headerSection && (
             <SectionRenderer
               key={headerSection.id}
@@ -224,7 +315,6 @@ export default function Preview() {
             />
           )}
 
-          {/* Body sections each get an anchor div for scroll-to navigation */}
           {bodySections.map((section) => (
             <div key={section.id} id={section.id}>
               <SectionRenderer
@@ -235,7 +325,6 @@ export default function Preview() {
             </div>
           ))}
 
-          {/* Footer: also unwrapped */}
           {footerSection && (
             <SectionRenderer
               key={footerSection.id}

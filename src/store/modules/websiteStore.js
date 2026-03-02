@@ -138,24 +138,23 @@ export const useWebsiteStore = create((set, get) => ({
     }));
   },
 
-  removeWebsite: (websiteId) => {
-    if (!websiteId) return;
+removeWebsite: (websiteId) => {
+  if (!websiteId) return;
 
-    set((state) => {
-      const newWebsites = state.websites.filter((w) => w.id !== websiteId);
-
-      // Clear selected website if it was removed
-      if (state.selectedWebsite?.id === websiteId) {
+  set((state) => {
+    const newWebsites = state.websites.filter((w) => w.id !== websiteId);
+    if (state.selectedWebsite?.id === websiteId) {
+      const nextWebsite = newWebsites.length > 0 ? newWebsites[0] : null;
+      if (nextWebsite) {
+        localStorage.setItem("selectedWebsite", JSON.stringify(nextWebsite)); // ✅ persist new selection
+      } else {
         localStorage.removeItem("selectedWebsite");
-        return {
-          websites: newWebsites,
-          selectedWebsite: newWebsites.length > 0 ? newWebsites[0] : null,
-        };
       }
-
-      return { websites: newWebsites };
-    });
-  },
+      return { websites: newWebsites, selectedWebsite: nextWebsite };
+    }
+    return { websites: newWebsites };
+  });
+},
 
   getWebsiteById: (websiteId) => {
     if (!websiteId) return null;
