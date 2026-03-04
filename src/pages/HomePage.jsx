@@ -204,9 +204,13 @@ const faqs = [
 
 // ─── Component ────────────────────────────────────────────────────────────────
 const HomePage = () => {
-  const { user, loginUser } = useAuth();
+  const { user } = useAuth();
   const heroRef = useRef(null);
   const [openFaq, setOpenFaq] = useState(null);
+
+  const loginUser = () => {
+    window.location.href = "/login";
+  }
 
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
   const heroY = useTransform(scrollYProgress, [0, 1], ["0%", "25%"]);
@@ -255,7 +259,7 @@ const HomePage = () => {
                 Sign in
               </motion.button>
               <motion.a
-                href="/register"
+                href="/reg"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 className="px-4 py-2 bg-white text-gray-900 text-sm font-semibold rounded-lg hover:bg-gray-100 transition-colors"
@@ -324,7 +328,7 @@ const HomePage = () => {
             ) : (
               <>
                 <motion.a
-                  href="/register"
+                  href="/reg"
                   whileHover={{ scale: 1.03, boxShadow: "0 0 30px rgba(99,102,241,0.4)" }}
                   whileTap={{ scale: 0.97 }}
                   className="px-7 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl transition-colors text-sm"
@@ -777,7 +781,7 @@ const HomePage = () => {
             ) : (
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <motion.a
-                  href="/register"
+                  href="/reg"
                   whileHover={{ scale: 1.03, boxShadow: "0 0 40px rgba(99,102,241,0.5)" }}
                   whileTap={{ scale: 0.97 }}
                   className="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl transition-colors"
@@ -826,7 +830,7 @@ const HomePage = () => {
               <div>
                 <p className="text-gray-300 font-medium mb-3">Account</p>
                 <div className="space-y-2 text-gray-500">
-                  <a href="/register" className="block hover:text-gray-300 transition-colors">Register</a>
+                  <a href="/reg" className="block hover:text-gray-300 transition-colors">Register</a>
                   <button onClick={loginUser} className="block hover:text-gray-300 transition-colors">Sign in</button>
                   {user && <a href="/dashboard" className="block hover:text-gray-300 transition-colors">Dashboard</a>}
                 </div>
